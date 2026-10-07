@@ -41,6 +41,9 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Admin only: when this admin last opened the Orders page. Orders placed
+    // after this moment are "new" for them (bell + sidebar badge).
+    ordersSeenAt: { type: Date, default: null },
     // Password reset OTP
     resetPasswordOTP: { type: String, default: null },
     resetPasswordOTPExpiry: { type: Date, default: null },

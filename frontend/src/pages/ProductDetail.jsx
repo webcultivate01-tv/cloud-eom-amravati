@@ -7,6 +7,7 @@ import { toggleFavorite, selectFavoriteIds } from "../features/favorites/favorit
 import { toast } from "react-toastify";
 import { flyToCart } from "../utils/flyToCart";
 import { usePageTitle } from "../components/PageTitle";
+import { trackViewItem } from "../utils/analytics";
 import { Heart, Palette, Edit3, CheckCircle2, XCircle, Check, Minus, Plus, ShoppingCart, ShoppingBag, Printer, Package, Truck, RotateCcw, Scale, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 
 /* Bare arrow — no pill, no circle, just the glyph with a soft halo so it stays
@@ -28,6 +29,7 @@ export default function ProductDetail() {
 
   useEffect(() => { dispatch(fetchProductById(id)); return () => dispatch(clearSelectedProduct()); }, [dispatch, id]);
   useEffect(() => { setActiveIdx(0); setSelectedSize(""); }, [product?._id]);
+  useEffect(() => { if (product) trackViewItem(product); }, [product]);
 
   /* Tab title follows the product once it loads */
   usePageTitle(
@@ -232,19 +234,17 @@ export default function ProductDetail() {
                   </div>
                 </div>
               )}
-              {product.allowCustomImage && !product.requiresCustomImage && (
-                <div className="flex gap-3 bg-white rounded-2xl ring-1 ring-slate-200/80 p-4">
-                  <Edit3 className="w-[18px] h-[18px] text-slate-500 shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-[12.5px] font-bold text-slate-900 m-0">Custom design optional</p>
-                    <p className="text-[12.5px] text-slate-500 leading-relaxed mt-0.5 mb-0">Add your own image at checkout, or order it exactly as shown.</p>
-                  </div>
+              <div className={`flex gap-3 bg-white rounded-2xl ring-1 p-4 ${product.allowCOD === false ? "ring-slate-200/80" : "ring-emerald-100"}`}>
+                <Truck className={`w-[18px] h-[18px] shrink-0 mt-0.5 ${product.allowCOD === false ? "text-slate-500" : "text-emerald-700"}`} />
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-bold text-slate-900 m-0">
+                    {product.allowCOD === false ? "Cash on Delivery not available" : "Cash on Delivery available"}
+                  </p>
+                  <p className="text-[12.5px] text-slate-500 leading-relaxed mt-0.5 mb-0">
+                    {product.allowCOD === false ? "Please pay online for this product." : "Pay in cash when your order arrives."}
+                  </p>
                 </div>
-              )}
-              {/* Nothing is said here about Cash on Delivery. Leading with what
-                  a product *can't* do talks a shopper out of it before they have
-                  decided to buy; the payment step already offers only the methods
-                  that apply to what is actually in the basket. */}
+              </div>
             </div>
 
             {/* Size */}

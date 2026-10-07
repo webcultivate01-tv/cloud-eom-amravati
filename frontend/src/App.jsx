@@ -27,7 +27,6 @@ import About from "./pages/About";
 import Services from "./pages/Services";
 import Replacements from "./pages/Replacements";
 import ForgotPassword from "./pages/ForgotPassword";
-import OrderSuccess from "./pages/OrderSuccess";
 
 import TermsConditions from "./pages/TermsConditions";
 import ShippingPolicy from "./pages/ShippingPolicy";
@@ -98,7 +97,6 @@ export default function App() {
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/cart"      element={<Cart />} />
                 <Route path="/checkout"      element={<PrivateRoute><Checkout /></PrivateRoute>} />
-                <Route path="/order-success" element={<PrivateRoute><OrderSuccess /></PrivateRoute>} />
                 <Route path="/orders"        element={<PrivateRoute><OrderHistory /></PrivateRoute>} />
                 <Route path="/profile"   element={<PrivateRoute><Profile /></PrivateRoute>} />
                 <Route path="/favorites"     element={<Favorites />} />

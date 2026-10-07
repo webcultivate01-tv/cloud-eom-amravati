@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { fetchAllOrders, fetchOrderGroupCounts, updateOrderStatus } from "../../features/orders/orderSlice";
 import { markOrderRefunded } from "../../features/payment/paymentSlice";
 import { toast } from "react-toastify";
@@ -109,6 +110,35 @@ export default function ManageOrders() {
   };
 
   useEffect(() => { loadOrders(); }, [tab, dateFilter, statusFilter, fromDate, toDate]);
+
+  /* Arriving from a notification (?order=<id>): jump to the tab that holds that
+     order, clear filters that could hide it, and open its details. */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetOrderId = searchParams.get("order");
+  useEffect(() => {
+    if (!targetOrderId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get(`/orders/${targetOrderId}`);
+        if (cancelled) return;
+        setDateFilter(""); setFromDate(""); setToDate(""); setStatusFilter("");
+        setTab(data.status === "Delivered" ? "delivered" : data.status === "Cancelled" ? "cancelled" : "active");
+        setExpandedOrderId(data._id);
+      } catch {
+        if (!cancelled) toast.error("Could not open that order");
+      } finally {
+        if (!cancelled) setSearchParams({}, { replace: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [targetOrderId]);
+
+  /* Once the list has loaded, bring the opened order into view */
+  useEffect(() => {
+    if (!expandedOrderId || loading) return;
+    document.getElementById(`order-${expandedOrderId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [expandedOrderId, loading, tab]);
 
   /* A status filter only makes sense within the tab that offers it, so
      switching tabs clears it rather than silently returning nothing. */
@@ -509,7 +539,7 @@ export default function ManageOrders() {
             const isExpanded = expandedOrderId === order._id;
             const itemCount = order.items.reduce((sum, it) => sum + it.quantity, 0);
             return (
-              <div key={order._id} className="admin-card hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
+              <div key={order._id} id={`order-${order._id}`} className="admin-card scroll-mt-24 hover:shadow-card-hover transition-shadow duration-200 overflow-hidden">
                 {/* ── Compact row — always visible ─────────────────── */}
                 <div
                   onClick={() => setExpandedOrderId(isExpanded ? null : order._id)}
@@ -711,7 +741,10 @@ export default function ManageOrders() {
                     </p>
                     {order.items.map((item, i) => (
                       <div key={i} className="flex justify-between items-center flex-wrap gap-2">
-                        <div>
+                        {item.product?.image && (
+                          <img src={item.product.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
                             {item.name}
                             {item.size && (
@@ -720,7 +753,21 @@ export default function ManageOrders() {
                               </span>
                             )}
                           </p>
-                          <p className="text-xs text-slate-400">Qty: {item.quantity} × ₹{item.price}</p>
+                          {item.product ? (
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {[
+                                item.product.category && `Category: ${item.product.category}`,
+                                item.product.subcategory && `Sub: ${item.product.subcategory}`,
+                                item.product.brand && `Brand: ${item.product.brand}`,
+                                item.product.sku && `SKU: ${item.product.sku}`,
+                              ].filter(Boolean).join(" · ")}
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-slate-400 mt-0.5">Product no longer in catalogue</p>
+                          )}
+                          <p className="text-xs text-slate-400">
+                            Qty: {item.quantity} × ₹{item.price} = <span className="font-semibold text-slate-600">₹{(item.quantity * item.price).toLocaleString("en-IN")}</span>
+                          </p>
                         </div>
                         {item.uploadedImage ? (
                           <a

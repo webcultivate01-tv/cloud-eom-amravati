@@ -6,11 +6,12 @@ import { clearCart, selectCartTotal, setItemImage, makeCartKey } from "../featur
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../utils/api";
+import { downloadFile } from "../utils/download";
 import { validateImageFile } from "../utils/uploadLimits";
 import {
   Package, MapPin, Palette, CheckCircle2, CreditCard, Banknote, ShieldCheck, Home, Briefcase,
   Image as ImageIcon, Upload, AlertTriangle, Ban, Info, ChevronRight, ChevronLeft, Check,
-  Lock, Truck, RotateCcw, Pencil,
+  Lock, Truck, RotateCcw, Pencil, Download,
 } from "lucide-react";
 
 const INDIAN_STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"];
@@ -62,19 +63,18 @@ export default function Checkout() {
   const [step, setStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   const [upiId, setUpiId] = useState("");
+  const [placedOrder, setPlacedOrder] = useState(null);
+  const [billBusy, setBillBusy] = useState(false);
   const loading = orderLoading || payLoading;
 
   useEffect(() => {
     if (orderSuccess || paySuccess) {
       const order = payCreatedOrder || codCreatedOrder;
       dispatch(clearCart()); dispatch(resetOrderState()); dispatch(resetPayment());
-      navigate("/order-success", {
-        state: {
-          orderId: order?._id || "",
-          paymentMethod: order?.paymentMethod || paymentMethod,
-          totalPrice: order?.totalPrice,
-        },
-        replace: true,
+      setPlacedOrder({
+        orderId: order?._id || "",
+        paymentMethod: order?.paymentMethod || paymentMethod,
+        totalPrice: order?.totalPrice,
       });
     }
   }, [orderSuccess, paySuccess]);
@@ -89,6 +89,14 @@ export default function Checkout() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [step]);
 
   const missingImages = items.filter((i) => i.requiresCustomImage && !i.uploadedImage);
+
+  /* Direct-sale (ready to ship) products have nothing to print, so a cart made
+     only of those skips the Designs stage entirely. */
+  const hasDesigns = items.some((i) => i.requiresCustomImage);
+  const steps = hasDesigns ? STEPS : STEPS.filter((s) => s.id !== 2);
+  const stepIndex = steps.findIndex((s) => s.id === step);
+  const afterShipping = hasDesigns ? 2 : 3;
+  const beforeReview = hasDesigns ? 2 : 1;
 
   // Default payment method based on cart contents — if any item disallows COD, force razorpay.
   const codBlockedItems = items.filter((i) => i.allowCOD === false);
@@ -158,17 +166,86 @@ export default function Checkout() {
     rzp.open();
   };
 
+  const handleDownloadBill = async () => {
+    setBillBusy(true);
+    try {
+      await downloadFile(`/invoice/${placedOrder.orderId}`, `Bill-${placedOrder.orderId.slice(-8).toUpperCase()}.pdf`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBillBusy(false);
+    }
+  };
+
   const handlePayNow = () => paymentMethod === "cod" ? handleCOD() : handleRazorpay();
 
+  /* Shown over the checkout once the order is placed. The cart is cleared at that
+     moment, so this is rendered from both the normal and the empty-cart return. */
+  const successModal = placedOrder && (() => {
+    const isCOD = placedOrder.paymentMethod === "cod";
+    const shortId = placedOrder.orderId ? placedOrder.orderId.slice(-8).toUpperCase() : "";
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4" role="dialog" aria-modal="true">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-7 text-center animate-fade-in-up">
+          <div className="w-20 h-20 rounded-full bg-[#1b7f3b] flex items-center justify-center mx-auto mb-5 shadow-lg shadow-[#1b7f3b]/30">
+            <Check className="w-10 h-10 text-white" strokeWidth={3} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 m-0 mb-1.5">
+            {isCOD ? "Order Placed!" : "Payment Successful!"}
+          </h2>
+          <p className="text-slate-500 text-[13.5px] font-medium m-0 mb-5">
+            {isCOD ? "Your order has been placed. Pay in cash on delivery." : "Your payment was confirmed and your order is placed."}
+          </p>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-5 text-left flex flex-col gap-2.5">
+            {shortId && (
+              <div className="flex justify-between text-[13px]">
+                <span className="text-slate-500 font-semibold">Order ID</span>
+                <span className="text-slate-900 font-black tracking-wider">#{shortId}</span>
+              </div>
+            )}
+            {placedOrder.totalPrice != null && (
+              <div className="flex justify-between text-[13px]">
+                <span className="text-slate-500 font-semibold">{isCOD ? "Pay on delivery" : "Amount paid"}</span>
+                <span className="text-slate-900 font-black">₹{placedOrder.totalPrice.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[13px]">
+              <span className="text-slate-500 font-semibold">Payment method</span>
+              <span className="text-slate-900 font-bold">{isCOD ? "Cash on Delivery" : "Online Payment"}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            {placedOrder.orderId && (
+              <button onClick={handleDownloadBill} disabled={billBusy} className="w-full inline-flex items-center justify-center gap-2 bg-white border border-brand-600 text-brand-700 px-7 py-3 rounded-xl font-bold text-[13.5px] cursor-pointer hover:bg-brand-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                <Download className="w-4 h-4" /> {billBusy ? "Preparing bill…" : "Download Bill"}
+              </button>
+            )}
+            <button onClick={() => navigate("/orders", { replace: true })} className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-7 py-3 rounded-xl font-bold text-[13.5px] border-none cursor-pointer transition-all shadow-md">
+              <Package className="w-4 h-4" /> View My Orders
+            </button>
+            <button onClick={() => navigate("/products", { replace: true })} className="w-full inline-flex items-center justify-center bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-xl font-bold text-[13.5px] cursor-pointer hover:bg-slate-50 transition-all">
+              Continue Shopping
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
   if (items.length === 0) return (
-    <div className="text-center py-24 bg-[#f7fafc] min-h-[70vh] flex flex-col items-center justify-center px-4">
+    <>
+    {successModal}
+    {!placedOrder && <div className="text-center py-24 bg-[#f7fafc] min-h-[70vh] flex flex-col items-center justify-center px-4">
       <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm mb-6 border border-slate-100">
         <Package className="w-10 h-10 text-slate-300" />
       </div>
       <h2 className="text-2xl font-black text-slate-900 mb-2">Checkout Unavailable</h2>
       <p className="text-slate-500 mb-8 max-w-md">Your cart is empty. Please add some products to your cart before proceeding to checkout.</p>
       <Link to="/products" className="bg-brand-600 text-white px-8 py-3.5 rounded-xl font-bold text-sm no-underline hover:bg-brand-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">Shop Now</Link>
-    </div>
+    </div>}
+    </>
   );
 
   const inputCls =
@@ -181,6 +258,7 @@ export default function Checkout() {
 
   return (
     <div className="bg-[#f7fafc] min-h-[80vh]">
+      {successModal}
 
       {/* ── Secure checkout header ── */}
       <header className="bg-white border-b border-slate-200/70 sticky top-0 z-30">
@@ -209,7 +287,7 @@ export default function Checkout() {
         {/* ── Step rail ── */}
         <nav className={`${cardCls} mb-6 px-3 md:px-5 py-4`} aria-label="Checkout progress">
           <ol className="flex items-start gap-0 m-0 p-0 list-none">
-            {STEPS.map(({ id, label, caption, Icon }, i) => {
+            {steps.map(({ id, label, caption, Icon }, i) => {
               const done = step > id;
               const current = step === id;
               /* Going back is allowed; skipping ahead is not */
@@ -243,7 +321,7 @@ export default function Checkout() {
                     </span>
                   </button>
 
-                  {i < STEPS.length - 1 && (
+                  {i < steps.length - 1 && (
                     <span className="flex-1 h-[3px] rounded-full bg-slate-100 mx-2 md:mx-3 mt-[18px] md:mt-[20px] overflow-hidden min-w-[12px]">
                       <span
                         className="block h-full bg-brand-600 rounded-full transition-all duration-500"
@@ -259,9 +337,9 @@ export default function Checkout() {
           {/* Mobile: the rail collapses to icons, so name the current stage here */}
           <div className="md:hidden mt-3.5 pt-3.5 border-t border-slate-100">
             <p className="text-[13px] font-black text-slate-900 m-0 leading-tight">
-              Step {step} of {STEPS.length} · {STEPS[step - 1].label}
+              Step {stepIndex + 1} of {steps.length} · {steps[stepIndex].label}
             </p>
-            <p className="text-[11.5px] text-slate-400 font-medium m-0 mt-0.5">{STEPS[step - 1].caption}</p>
+            <p className="text-[11.5px] text-slate-400 font-medium m-0 mt-0.5">{steps[stepIndex].caption}</p>
           </div>
         </nav>
 
@@ -343,8 +421,8 @@ export default function Checkout() {
                 </div>
 
                 <div className="px-5 md:px-7 py-4 border-t border-slate-100 bg-slate-50/60 flex justify-end">
-                  <button onClick={() => { if (validateShipping()) setStep(2); }} className={`${nextBtn} w-full sm:w-auto`}>
-                    Continue to Designs <ChevronRight className="w-4 h-4" />
+                  <button onClick={() => { if (validateShipping()) setStep(afterShipping); }} className={`${nextBtn} w-full sm:w-auto`}>
+                    {hasDesigns ? "Continue to Designs" : "Review Order"} <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -367,7 +445,7 @@ export default function Checkout() {
                   <div className="flex flex-col gap-3">
                     {items.map((item) => {
                       const itemKey = makeCartKey(item._id, item.size);
-                      const customisable = item.requiresCustomImage || item.allowCustomImage;
+                      const customisable = item.requiresCustomImage;
                       return (
                         <div key={itemKey}
                           className={`flex gap-4 p-4 border rounded-xl items-start sm:items-center flex-col sm:flex-row transition-colors ${
@@ -500,9 +578,11 @@ export default function Checkout() {
                       <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest m-0 flex items-center gap-1.5">
                         <Package className="w-3.5 h-3.5" /> Items ({items.length})
                       </h3>
-                      <button onClick={() => setStep(2)} className="inline-flex items-center gap-1 text-[11.5px] font-bold text-brand-600 hover:text-brand-700 bg-transparent border-none cursor-pointer p-0 transition-colors">
-                        <Pencil className="w-3 h-3" /> Edit designs
-                      </button>
+                      {hasDesigns && (
+                        <button onClick={() => setStep(2)} className="inline-flex items-center gap-1 text-[11.5px] font-bold text-brand-600 hover:text-brand-700 bg-transparent border-none cursor-pointer p-0 transition-colors">
+                          <Pencil className="w-3 h-3" /> Edit designs
+                        </button>
+                      )}
                     </div>
                     <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
                       {items.map((item) => (
@@ -534,7 +614,7 @@ export default function Checkout() {
                 </div>
 
                 <div className="px-5 md:px-7 py-4 border-t border-slate-100 bg-slate-50/60 flex gap-3 justify-between">
-                  <button onClick={() => setStep(2)} className={backBtn}>
+                  <button onClick={() => setStep(beforeReview)} className={backBtn}>
                     <ChevronLeft className="w-4 h-4" /> Back
                   </button>
                   <button onClick={() => setStep(4)} className={nextBtn}>

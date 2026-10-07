@@ -133,7 +133,7 @@ const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate("user", "name email phone")
-      .populate("items.product", "name image category");
+      .populate("items.product", "name image category subcategory brand sku description");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -208,9 +208,48 @@ const getAllOrders = async (req, res) => {
 
     const orders = await Order.find(query)
       .populate("user", "name email phone")
-      .populate("items.product", "name category")
+      .populate("items.product", "name image category subcategory brand sku description")
       .sort(sort);
     res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Pending-order count plus the latest orders, for the admin sidebar badge and bell
+// @route   GET /api/orders/admin/recent
+// @access  Admin
+const getRecentOrders = async (req, res) => {
+  try {
+    let seenAt = req.user.ordersSeenAt;
+    // First time this admin is seen: everything already in the system is old
+    if (!seenAt) {
+      seenAt = new Date();
+      await User.findByIdAndUpdate(req.user._id, { ordersSeenAt: seenAt });
+    }
+
+    const filter = { createdAt: { $gt: seenAt } };
+    const [newCount, recent] = await Promise.all([
+      Order.countDocuments(filter),
+      Order.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .select("orderNumber totalPrice status paymentMethod paymentStatus createdAt shippingAddress.fullName items.name items.quantity")
+        .lean(),
+    ]);
+    res.json({ newCount, recent });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Admin opened the Orders page: clear their "new order" count
+// @route   PUT /api/orders/admin/mark-seen
+// @access  Admin
+const markOrdersSeen = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { ordersSeenAt: new Date() });
+    res.json({ newCount: 0 });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -488,6 +527,8 @@ module.exports = {
   getMyOrders,
   getOrderById,
   getAllOrders,
+  getRecentOrders,
+  markOrdersSeen,
   getOrderGroupCounts,
   updateOrderStatus,
   getDashboardStats,

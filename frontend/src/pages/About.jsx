@@ -131,17 +131,17 @@ export default function About() {
             delivery under one roof — so your idea reaches you finished, not half-done.
           </Reveal>
 
-          <Reveal delay={240} className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
+          <Reveal delay={240} className="flex flex-row gap-4 sm:gap-5 justify-center mt-8">
             <Link
               to="/products"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white no-underline transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap text-white no-underline transition-transform hover:-translate-y-0.5"
               style={{ background: BRAND, boxShadow: "0 4px 18px rgba(6,114,167,0.28)" }}
             >
               Explore Products <IconArrow />
             </Link>
             <Link
               to="/services"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm no-underline bg-white transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap no-underline bg-white transition-transform hover:-translate-y-0.5"
               style={{ color: BRAND, border: "1px solid #cfe7f5", boxShadow: "0 2px 10px rgba(15,23,42,0.05)" }}
             >
               Our Services

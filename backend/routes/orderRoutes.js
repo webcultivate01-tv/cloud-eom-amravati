@@ -5,6 +5,8 @@ const {
   getMyOrders,
   getOrderById,
   getAllOrders,
+  getRecentOrders,
+  markOrdersSeen,
   getOrderGroupCounts,
   updateOrderStatus,
   getDashboardStats,
@@ -16,6 +18,12 @@ const { adminOnly } = require("../middleware/adminMiddleware");
 
 // Admin dashboard stats — must be before /:id
 router.get("/admin/stats", protect, adminOnly, getDashboardStats);
+
+// Admin: pending count + latest orders (sidebar badge / bell)
+router.get("/admin/recent", protect, adminOnly, getRecentOrders);
+
+// Admin: opening the Orders page clears the new-order badge
+router.put("/admin/mark-seen", protect, adminOnly, markOrdersSeen);
 
 // Admin: order counts per tab (Active / Delivered / Cancelled)
 router.get("/admin/group-counts", protect, adminOnly, getOrderGroupCounts);

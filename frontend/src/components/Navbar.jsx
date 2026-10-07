@@ -13,6 +13,7 @@ import { logout } from "../features/auth/authSlice";
 import { clearCart, selectCartCount } from "../features/cart/cartSlice";
 import { selectFavoriteCount } from "../features/favorites/favoritesSlice";
 import { toast } from "react-toastify";
+import SearchBox from "./SearchBox";
 
 const PROMO_CATEGORIES = ["Sale", "New Arrivals"];
 const PRODUCT_CATEGORIES = ["Cup", "T-Shirt", "Diary", "Pen", "ID Card", "Frame", "Keychain", "Banner"].sort((a, b) => a.localeCompare(b));
@@ -223,7 +224,6 @@ export default function Navbar() {
   const cartCount = useSelector(selectCartCount);
   const favCount = useSelector(selectFavoriteCount);
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [mobileDrawer, setMobileDrawer] = useState(false);
   const [drawerAccountOpen, setDrawerAccountOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
@@ -276,14 +276,6 @@ export default function Navbar() {
     dispatch(clearCart());
     toast.success("Logged out successfully");
     navigate("/login");
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery("");
-    }
   };
 
   const catQuery = (cat) =>
@@ -362,53 +354,8 @@ export default function Navbar() {
               <IconMenu />
             </button>
 
-            {/* Search — desktop: persistent compact box + button */}
-            <form
-              onSubmit={handleSearch}
-              className="desktop-search"
-              style={{ display: "none", alignItems: "center", gap: "6px" }}
-            >
-              <input
-                className="desktop-search-input"
-                style={{
-                  width: 170,
-                  border: "1.5px solid #e5e7eb",
-                  borderRadius: "20px",
-                  padding: "7px 14px",
-                  fontSize: "12.5px",
-                  outline: "none",
-                  fontFamily: "'Montserrat', sans-serif",
-                  transition: "width 0.2s ease, border-color 0.2s ease",
-                }}
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={(e) => { e.target.style.borderColor = "#0672a7"; e.target.style.width = "230px"; }}
-                onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; e.target.style.width = "170px"; }}
-              />
-              <button
-                type="submit"
-                aria-label="Search"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  background: "#0672a7",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#0a5b82"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#0672a7"; }}
-              >
-                <IconSearch />
-              </button>
-            </form>
+            {/* Search — desktop: compact box with live suggestions */}
+            <SearchBox variant="desktop" />
           </div>
 
           {/* CENTER — Logo (absolutely centered) */}
@@ -647,14 +594,14 @@ export default function Navbar() {
                   fontSize: "12.5px",
                   fontWeight: 600,
                   letterSpacing: "0.5px",
-                  color: active ? "#0672a7" : "#787A7C",
+                  color: active ? "#0672a7" : "#4B5563",
                   whiteSpace: "nowrap",
                   fontFamily: "'Montserrat', sans-serif",
                   textTransform: "uppercase",
                   transition: "color 0.15s",
                 }}
                 onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#0672a7"; }}
-                onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#787A7C"; }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#4B5563"; }}
               >
                 {cat.toUpperCase()}
               </Link>
@@ -722,46 +669,7 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Search */}
-        <form
-          onSubmit={handleSearch}
-          style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0", flexShrink: 0, display: "flex", gap: 8 }}
-        >
-          <input
-            style={{
-              flex: 1,
-              border: "1.5px solid #e5e7eb",
-              borderRadius: 12,
-              padding: "9px 14px",
-              fontSize: 13,
-              outline: "none",
-              background: "#fafafa",
-              fontFamily: "'Montserrat', sans-serif",
-              minWidth: 0,
-            }}
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={(e) => { e.target.style.borderColor = "#0672a7"; }}
-            onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
-          />
-          <button
-            type="submit"
-            style={{
-              background: "#0672a7",
-              color: "#fff",
-              border: "none",
-              borderRadius: 12,
-              padding: "9px 16px",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "'Montserrat', sans-serif",
-              flexShrink: 0,
-            }}
-          >
-            Go
-          </button>
-        </form>
+        <SearchBox variant="mobile" onNavigate={() => setMobileDrawer(false)} />
 
         {/* Pages */}
         <div style={{ borderBottom: "1px solid #f0f0f0" }}>

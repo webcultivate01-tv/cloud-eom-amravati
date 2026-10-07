@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import api from "../utils/api";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import { clearCart } from "../features/cart/cartSlice";
@@ -18,7 +19,7 @@ const NAV_SECTIONS = [
     label: "Overview",
     items: [
       { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { to: "/admin/orders",    icon: ShoppingCart,    label: "Orders" },
+      { to: "/admin/orders",    icon: ShoppingCart,    label: "Orders", orderBadge: true },
       { to: "/admin/payments",  icon: CreditCard,      label: "Payments" },
     ],
   },
@@ -49,10 +50,29 @@ const NAV_SECTIONS = [
   },
 ];
 
+/* "2 minutes ago", "22 hours ago" — falls back to the date after a week */
+const timeAgo = (date) => {
+  const secs = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 1000));
+  if (secs < 60) return "Just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+};
+
 export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [, setTick] = useState(0);
+  const bellRef    = useRef(null);
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
+  const location   = useLocation();
   const { user }   = useSelector((s) => s.auth);
   const { pendingCount } = useSelector((s) => s.inquiry);
 
@@ -61,6 +81,45 @@ export default function AdminLayout({ children }) {
     const id = setInterval(() => dispatch(fetchPendingCount()), 60_000);
     return () => clearInterval(id);
   }, [dispatch]);
+
+  /* New orders = placed since this admin last opened the Orders page. Opening
+     that page marks them seen on the server (so it holds across devices), and
+     the badge + notifications clear. Otherwise poll for fresh ones. */
+  useEffect(() => {
+    let cancelled = false;
+    const onOrdersPage = location.pathname.startsWith("/admin/orders");
+    const load = async (markSeen) => {
+      try {
+        if (markSeen) {
+          await api.put("/orders/admin/mark-seen");
+          if (!cancelled) { setPendingOrders(0); setRecentOrders([]); }
+          return;
+        }
+        const { data } = await api.get("/orders/admin/recent");
+        if (!cancelled) { setPendingOrders(data.newCount); setRecentOrders(data.recent); }
+      } catch { /* badge is non-critical */ }
+    };
+    // Entering the Orders page clears the badge; later polls (below) surface
+    // any order that arrives while the admin is sitting on it.
+    load(onOrdersPage);
+    const id = setInterval(() => load(false), 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [location.pathname]);
+
+  /* Keep the "x minutes ago" labels moving while the page sits open */
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!bellOpen) return;
+    const close = (e) => { if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [bellOpen]);
+
+  const bellCount = pendingOrders + pendingCount;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -133,7 +192,11 @@ export default function AdminLayout({ children }) {
               {!sidebarOpen && (
                 <div className="my-2 mx-3 h-px bg-slate-100" />
               )}
-              {section.items.map(({ to, icon: Icon, label, badge }) => (
+              {section.items.map(({ to, icon: Icon, label, badge: inquiryBadge, orderBadge }) => {
+                const badge = inquiryBadge || orderBadge;
+                const count = orderBadge ? pendingOrders : pendingCount;
+                const badgeBg = orderBadge ? "bg-red-500" : "bg-brand-500";
+                return (
                 <NavLink
                   key={to}
                   to={to}
@@ -155,18 +218,18 @@ export default function AdminLayout({ children }) {
                       )}
                       <span className="shrink-0 relative">
                         <Icon size={16} strokeWidth={isActive ? 2.5 : 1.8} />
-                        {badge && pendingCount > 0 && !sidebarOpen && (
-                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-brand-500 text-white
-                                           text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                            {pendingCount > 9 ? "9+" : pendingCount}
+                        {badge && count > 0 && !sidebarOpen && (
+                          <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 ${badgeBg} text-white
+                                           text-[9px] font-bold rounded-full flex items-center justify-center leading-none`}>
+                            {count > 9 ? "9+" : count}
                           </span>
                         )}
                       </span>
                       {sidebarOpen && <span className="flex-1">{label}</span>}
-                      {sidebarOpen && badge && pendingCount > 0 && (
-                        <span className="ml-auto bg-brand-500 text-white text-[10px] font-bold rounded-full
-                                         px-1.5 py-0.5 min-w-[20px] text-center leading-none">
-                          {pendingCount > 99 ? "99+" : pendingCount}
+                      {sidebarOpen && badge && count > 0 && (
+                        <span className={`ml-auto ${badgeBg} text-white text-[10px] font-bold rounded-full
+                                         px-1.5 py-0.5 min-w-[20px] text-center leading-none`}>
+                          {count > 99 ? "99+" : count}
                         </span>
                       )}
                       {sidebarOpen && !badge && isActive && (
@@ -175,7 +238,8 @@ export default function AdminLayout({ children }) {
                     </>
                   )}
                 </NavLink>
-              ))}
+                );
+              })}
             </div>
           ))}
         </nav>
@@ -224,20 +288,77 @@ export default function AdminLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <NavLink
-              to="/admin/inquiries"
-              className="relative w-9 h-9 flex items-center justify-center rounded-lg
-                         text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
-              title={pendingCount > 0 ? `${pendingCount} pending enquiries` : "Enquiries"}
-            >
-              <Bell size={18} />
-              {pendingCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-brand-500 text-white text-[9px]
-                                 font-bold rounded-full flex items-center justify-center leading-none">
-                  {pendingCount > 9 ? "9+" : pendingCount}
-                </span>
+            <div className="relative" ref={bellRef}>
+              <button
+                onClick={() => setBellOpen((o) => !o)}
+                aria-label="Notifications"
+                className="relative w-9 h-9 flex items-center justify-center rounded-lg border-none bg-transparent cursor-pointer
+                           text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              >
+                <Bell size={18} />
+                {bellCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px]
+                                   font-bold rounded-full flex items-center justify-center leading-none">
+                    {bellCount > 9 ? "9+" : bellCount}
+                  </span>
+                )}
+              </button>
+
+              {bellOpen && (
+                <div className="absolute right-0 top-11 w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-slate-200
+                                rounded-2xl shadow-xl z-30 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <p className="text-slate-900 font-bold text-sm m-0">Notifications</p>
+                    {pendingOrders > 0 && (
+                      <span className="bg-red-50 text-red-600 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                        {pendingOrders} new
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-[360px] overflow-y-auto">
+                    {recentOrders.length === 0 ? (
+                      <p className="text-slate-400 text-[13px] text-center py-8 m-0">No new orders</p>
+                    ) : recentOrders.map((o) => {
+                      const isNew = true; // the bell only lists unseen orders
+                      return (
+                        <button
+                          key={o._id}
+                          onClick={() => { setBellOpen(false); navigate(`/admin/orders?order=${o._id}`); }}
+                          className="w-full text-left flex gap-3 px-4 py-3 border-none border-b border-slate-50 bg-white
+                                     hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${isNew ? "bg-red-500" : "bg-transparent"}`} />
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-slate-800 text-[13px] font-bold leading-tight">
+                              New order{o.orderNumber ? ` #${o.orderNumber}` : ""}
+                            </span>
+                            <span className="block text-slate-500 text-[12px] mt-0.5 truncate">
+                              {o.shippingAddress?.fullName} · ₹{o.totalPrice?.toLocaleString("en-IN")} ·{" "}
+                              {o.paymentMethod === "cod" ? "COD" : "Paid online"}
+                            </span>
+                            <span className="block text-slate-400 text-[11px] font-semibold mt-1">{timeAgo(o.createdAt)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex border-t border-slate-100 text-[12px] font-bold">
+                    <NavLink to="/admin/orders" onClick={() => setBellOpen(false)}
+                      className="flex-1 text-center py-3 text-brand-700 no-underline hover:bg-slate-50">
+                      View all orders
+                    </NavLink>
+                    {pendingCount > 0 && (
+                      <NavLink to="/admin/inquiries" onClick={() => setBellOpen(false)}
+                        className="flex-1 text-center py-3 text-slate-600 no-underline border-l border-slate-100 hover:bg-slate-50">
+                        {pendingCount} pending enquir{pendingCount === 1 ? "y" : "ies"}
+                      </NavLink>
+                    )}
+                  </div>
+                </div>
               )}
-            </NavLink>
+            </div>
 
             <div className="h-7 w-px bg-slate-100" />
 

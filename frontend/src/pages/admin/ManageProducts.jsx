@@ -24,12 +24,6 @@ const TYPE_OPTIONS = [
     desc: "Customer buys as-is, no custom image.",
   },
   {
-    value: "optional",
-    icon: Pencil,
-    name: "Custom Optional",
-    desc: "Customer can upload a design — not required.",
-  },
-  {
     value: "required",
     icon: Image,
     name: "Custom Required",
@@ -48,9 +42,19 @@ const folderSlug = (str) =>
 
 const typeBadge = (p) => {
   if (p.requiresCustomImage) return { label: "Custom Required", cls: "bg-purple-100 text-purple-700" };
-  if (p.allowCustomImage)    return { label: "Custom Optional",  cls: "bg-brand-100 text-brand-700" };
   return { label: "Direct Sale", cls: "bg-emerald-100 text-emerald-700" };
 };
+
+/* Dark label shown above each form field so admins know what to enter. */
+const Field = ({ label, required, hint, className = "", children }) => (
+  <div className={className}>
+    <label className="block text-[13px] font-semibold text-slate-800 mb-1.5">
+      {label}{required && <span className="text-brand-600"> *</span>}
+      {hint && <span className="font-normal text-slate-400 text-xs"> ({hint})</span>}
+    </label>
+    {children}
+  </div>
+);
 
 /* ── Main component ─────────────────────────────────────── */
 export default function ManageProducts() {
@@ -105,7 +109,7 @@ export default function ManageProducts() {
       name: p.name, description: p.description, price: p.price,
       originalPrice: p.originalPrice || "", brand: p.brand || "", sku: p.sku || "",
       category: p.category, stock: p.stock,
-      allowCustomImage: p.allowCustomImage,
+      allowCustomImage: !!p.requiresCustomImage,
       requiresCustomImage: p.requiresCustomImage || false, isAvailable: p.isAvailable,
       allowCOD: p.allowCOD !== undefined ? p.allowCOD : true,
       weight: p.weight || "", returnPolicy: p.returnPolicy || "",
@@ -140,11 +144,10 @@ export default function ManageProducts() {
 
   const setProductType = (type) => {
     if (type === "direct")   setForm((f) => ({ ...f, allowCustomImage: false, requiresCustomImage: false }));
-    if (type === "optional") setForm((f) => ({ ...f, allowCustomImage: true,  requiresCustomImage: false }));
     if (type === "required") setForm((f) => ({ ...f, allowCustomImage: true,  requiresCustomImage: true  }));
   };
 
-  const productType = form.requiresCustomImage ? "required" : form.allowCustomImage ? "optional" : "direct";
+  const productType = form.requiresCustomImage ? "required" : "direct";
 
   const addHighlight = () => {
     if (!hlInput.trim()) return;
@@ -308,40 +311,54 @@ export default function ManageProducts() {
 
           {/* Basic Info */}
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Basic Info</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <input className="admin-input" placeholder="Product Name *" value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <input className="admin-input" placeholder="Brand" value={form.brand}
-              onChange={(e) => setForm({ ...form, brand: e.target.value })} />
-            <input className="admin-input" placeholder="SKU / Model No." value={form.sku}
-              onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-            <select className="admin-input" value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <Field label="Product Name" required>
+              <input className="admin-input" placeholder="Product Name *" value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </Field>
+            <Field label="Brand" hint="optional">
+              <input className="admin-input" placeholder="Brand" value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+            </Field>
+            <Field label="Category" required hint="select one">
+              <select className="admin-input" value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
           </div>
-          <textarea
-            className="admin-input h-20 resize-y mb-4"
-            placeholder="Description *"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            required
-          />
+          <Field label="Description" required className="mb-4">
+            <textarea
+              className="admin-input h-20 resize-y"
+              placeholder="Description *"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              required
+            />
+          </Field>
 
           {/* Pricing & Stock */}
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 mt-2">Pricing & Stock</p>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
-            <div className="relative">
-              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input className="admin-input pl-9" placeholder="Selling Price *" type="number"
-                value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-            </div>
-            <input className="admin-input" placeholder="Original Price (discount)" type="number"
-              value={form.originalPrice} onChange={(e) => setForm({ ...form, originalPrice: e.target.value })} />
-            <input className="admin-input" placeholder="Stock" type="number"
-              value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
-            <input className="admin-input" placeholder="Weight (e.g. 500g)"
-              value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+            <Field label="Selling Price" required hint="price customers pay">
+              <div className="relative">
+                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input className="admin-input pl-9" placeholder="Selling Price *" type="number"
+                  value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+              </div>
+            </Field>
+            <Field label="Original Price" hint="shows a discount">
+              <input className="admin-input" placeholder="Original Price (discount)" type="number"
+                value={form.originalPrice} onChange={(e) => setForm({ ...form, originalPrice: e.target.value })} />
+            </Field>
+            <Field label="Stock" hint="units available">
+              <input className="admin-input" placeholder="Stock" type="number"
+                value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+            </Field>
+            <Field label="Weight">
+              <input className="admin-input" placeholder="Weight (e.g. 500g)"
+                value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+            </Field>
           </div>
           {form.originalPrice && Number(form.originalPrice) > Number(form.price) && (
             <div className="mb-4 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-1">
@@ -352,14 +369,16 @@ export default function ManageProducts() {
 
           {/* Highlights */}
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 mt-5">Key Highlights</p>
-          <div className="flex gap-2 mb-2">
-            <input
-              className="admin-input flex-1"
-              placeholder="e.g. Premium quality printing"
-              value={hlInput}
-              onChange={(e) => setHlInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addHighlight(); } }}
-            />
+          <div className="flex gap-2 mb-2 items-end">
+            <Field label="Highlight" hint="press Enter or Add" className="flex-1">
+              <input
+                className="admin-input"
+                placeholder="e.g. Premium quality printing"
+                value={hlInput}
+                onChange={(e) => setHlInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addHighlight(); } }}
+              />
+            </Field>
             <button type="button" onClick={addHighlight}
               className="admin-btn admin-btn-primary !py-1.5 !px-4 !text-sm flex-shrink-0">Add</button>
           </div>
@@ -380,13 +399,17 @@ export default function ManageProducts() {
 
           {/* Specifications */}
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 mt-5">Product Specifications</p>
-          <div className="flex gap-2 mb-2">
-            <input className="admin-input flex-1" placeholder="Property (e.g. Material)" value={specKey}
-              onChange={(e) => setSpecKey(e.target.value)} />
-            <input className="admin-input flex-1" placeholder="Value (e.g. 100% Cotton)" value={specVal}
-              onChange={(e) => setSpecVal(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSpec(); } }}
-            />
+          <div className="flex gap-2 mb-2 items-end">
+            <Field label="Property" className="flex-1">
+              <input className="admin-input" placeholder="Property (e.g. Material)" value={specKey}
+                onChange={(e) => setSpecKey(e.target.value)} />
+            </Field>
+            <Field label="Value" className="flex-1">
+              <input className="admin-input" placeholder="Value (e.g. 100% Cotton)" value={specVal}
+                onChange={(e) => setSpecVal(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSpec(); } }}
+              />
+            </Field>
             <button type="button" onClick={addSpec}
               className="admin-btn admin-btn-primary !py-1.5 !px-4 !text-sm flex-shrink-0">Add</button>
           </div>
@@ -405,14 +428,6 @@ export default function ManageProducts() {
             </div>
           )}
 
-          {/* Return Policy */}
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 mt-5">Return Policy</p>
-          <textarea
-            className="admin-input h-14 resize-y mb-5"
-            placeholder="e.g. Custom printed products are non-returnable unless defective…"
-            value={form.returnPolicy}
-            onChange={(e) => setForm({ ...form, returnPolicy: e.target.value })}
-          />
 
           {/* Availability + COD */}
           <div className="flex flex-col sm:flex-row gap-4 mb-5">
@@ -467,14 +482,16 @@ export default function ManageProducts() {
               );
             })}
           </div>
-          <div className="flex gap-2 mb-2">
-            <input
-              className="admin-input flex-1 max-w-xs"
-              placeholder="Add custom size (e.g. 32, 34, Free Size)"
-              value={sizeInput}
-              onChange={(e) => setSizeInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSize(); } }}
-            />
+          <div className="flex gap-2 mb-2 items-end">
+            <Field label="Custom Size" className="flex-1 max-w-xs">
+              <input
+                className="admin-input"
+                placeholder="Add custom size (e.g. 32, 34, Free Size)"
+                value={sizeInput}
+                onChange={(e) => setSizeInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSize(); } }}
+              />
+            </Field>
             <button type="button" onClick={addSize}
               className="admin-btn admin-btn-primary !py-1.5 !px-4 !text-sm flex-shrink-0">Add</button>
           </div>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, matchPath } from "react-router-dom";
+import { trackPageview } from "../utils/analytics";
 
 const SITE = "Cloud Graphics";
 const CITY = "Amravati";
@@ -52,7 +53,6 @@ const ROUTES = [
   },
   { path: "/cart", title: `Your Cart — ${SITE_FULL}` },
   { path: "/checkout", title: `Checkout — ${SITE_FULL}` },
-  { path: "/order-success", title: `Order Confirmed — ${SITE_FULL}` },
   { path: "/orders", title: `My Orders — ${SITE_FULL}` },
   { path: "/favorites", title: `My Wishlist — ${SITE_FULL}` },
   { path: "/profile", title: `My Profile — ${SITE_FULL}` },
@@ -127,6 +127,7 @@ export default function PageTitle() {
     const match =
       ROUTES.find((r) => matchPath({ path: r.path, end: true }, pathname)) || FALLBACK;
     applyPageMeta(match.title, match.description || `${SITE} — ${TAGLINE}`);
+    trackPageview(pathname, withCity(match.title));
   }, [pathname]);
 
   return null;
