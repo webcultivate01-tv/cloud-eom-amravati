@@ -501,7 +501,7 @@ const getOverview = async (req, res) => {
 
     // Counted outside the settled-sales population on purpose
     const [pendingOrders, cancelledOrders, refunded, billsRaised, newCustomers] = await Promise.all([
-      Order.countDocuments({ status: { $in: ["Pending", "Processing", "Printing", "Shipped"] }, ...(window ? { createdAt: window } : {}) }),
+      Order.countDocuments({ status: { $in: ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped"] }, ...(window ? { createdAt: window } : {}) }),
       Order.countDocuments({ status: "Cancelled", ...(window ? { createdAt: window } : {}) }),
       Order.aggregate([
         { $match: { paymentStatus: "refunded", ...(window ? { createdAt: window } : {}) } },

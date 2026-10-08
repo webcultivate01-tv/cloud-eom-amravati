@@ -9,14 +9,24 @@ const path = require("path");
 const COMPANY = {
   name:      process.env.COMPANY_NAME    || "Cloud Graphics Amravati",
   legalName: process.env.COMPANY_LEGAL   || "Cloud Graphics",
-  address1:  process.env.COMPANY_ADDR1   || "Shivaji Complex, Akoli Road",
-  address2:  process.env.COMPANY_ADDR2   || "Amravati, Maharashtra 444607",
-  phone:     process.env.COMPANY_PHONE   || "093076 41746",
+  address1:  process.env.COMPANY_ADDR1   || "Block No. 70, Aakoli Road, Near Savji Dhaba, Sai Nagar",
+  address2:  process.env.COMPANY_ADDR2   || "Amravati, Maharashtra, 444607",
+  phone:     process.env.COMPANY_PHONE   || "9307641746",
+  pan:       process.env.COMPANY_PAN     || "DNDPG2376C",
   email:     process.env.COMPANY_EMAIL   || "info@cloudgraphics.in",
   website:   process.env.COMPANY_WEBSITE || "www.cloudgraphics.in",
   gstin:     process.env.COMPANY_GSTIN   || "27ABCDE1234F1Z5",
   state:     process.env.COMPANY_STATE   || "Maharashtra",
   stateCode: process.env.COMPANY_STATE_CODE || "27",
+};
+
+/* Where customers pay — printed on the bill with a UPI QR. */
+const BANK = {
+  holder:  process.env.BANK_HOLDER  || "Kartikesh Ganoskar",
+  ifsc:    process.env.BANK_IFSC    || "BARB0SAIAMR",
+  account: process.env.BANK_ACCOUNT || "36430200000552",
+  bank:    process.env.BANK_NAME    || "Bank of Baroda, BRANCH",
+  upiId:   process.env.BANK_UPI_ID  || "9307641746-3@ybl",
 };
 
 /* ── Tax ──────────────────────────────────────────────────────
@@ -65,15 +75,18 @@ const BRAND = {
 
 const LOGO_DARK  = path.join(__dirname, "..", "assets", "logo.png");        // for light backgrounds
 const LOGO_WHITE = path.join(__dirname, "..", "assets", "logo-white.png");  // for the brand band
+const SIGNATURE  = path.join(__dirname, "..", "assets", "signature.png");   // founder signature on invoices
 
 module.exports = {
   COMPANY,
+  BANK,
   BRAND,
   GST_RATE,
   CGST_RATE,
   SGST_RATE,
   LOGO_DARK,
   LOGO_WHITE,
+  SIGNATURE,
   round2,
   splitGst,
 };

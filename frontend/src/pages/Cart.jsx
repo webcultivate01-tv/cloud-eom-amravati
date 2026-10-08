@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { removeFromCart, updateQuantity, selectCartTotal, makeCartKey } from "../features/cart/cartSlice";
+import { removeFromCart, updateQuantity, selectCartTotal, selectCartDelivery, makeCartKey } from "../features/cart/cartSlice";
 import { useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, AlertCircle, CheckCircle2, Minus, Plus, X, ArrowRight, ArrowLeft } from "lucide-react";
 
@@ -8,6 +8,7 @@ export default function Cart() {
   const navigate = useNavigate();
   const { items } = useSelector((s) => s.cart);
   const total = useSelector(selectCartTotal);
+  const delivery = useSelector(selectCartDelivery);
   const { user } = useSelector((s) => s.auth);
 
   if (items.length === 0) return (
@@ -119,13 +120,13 @@ export default function Cart() {
                       </button>
                     </div>
 
-                    <p className="font-display text-slate-900 text-[17px] sm:text-[16px] font-black tabular-nums m-0 sm:w-24 sm:text-right">
+                    <p className="font-sans text-brand-700 text-[17px] sm:text-[18px] font-extrabold leading-none tracking-normal whitespace-nowrap tabular-nums m-0 sm:w-24 sm:text-right">
                       ₹{(item.price * item.quantity).toLocaleString()}
                     </p>
 
                     <div className="sm:w-10 flex justify-end">
                       <button aria-label="Remove item" title="Remove item"
-                        className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer text-slate-300 hover:text-brand-700 hover:bg-brand-50 transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+                        className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer text-slate-900 hover:text-brand-700 hover:bg-brand-50 transition-all duration-200"
                         onClick={() => dispatch(removeFromCart(key))}>
                         <X className="w-4 h-4" />
                       </button>
@@ -140,25 +141,27 @@ export default function Cart() {
           {/* ── Summary ── */}
           <div className="w-full lg:w-[310px] shrink-0 lg:sticky lg:top-28">
             <div className="bg-white rounded-[18px] ring-1 ring-slate-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-5">
-              <h2 className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 m-0 mb-4">
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-700 m-0 mb-4">
                 Summary
               </h2>
 
               <div className="flex flex-col gap-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-[12.5px]">Subtotal</span>
-                  <span className="text-slate-900 font-semibold text-[12.5px] tabular-nums">₹{total.toLocaleString()}</span>
+                  <span className="text-slate-700 font-medium text-[13px]">Product cost</span>
+                  <span className="font-sans text-slate-900 font-extrabold text-[14px] tabular-nums">₹{total.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-[12.5px]">Shipping</span>
-                  <span className="text-emerald-700 font-bold text-[11px] uppercase tracking-[0.12em]">Free</span>
+                  <span className="text-slate-700 font-medium text-[13px]">Delivery charges</span>
+                  {delivery > 0
+                    ? <span className="font-sans text-slate-900 font-extrabold text-[14px] tabular-nums">₹{delivery.toLocaleString()}</span>
+                    : <span className="text-emerald-800 font-extrabold text-[11.5px] uppercase tracking-[0.12em]">Free</span>}
                 </div>
               </div>
 
-              <div className="border-t border-slate-200/70 mt-4 pt-4 flex items-baseline justify-between gap-3">
+              <div className="border-t border-slate-300 mt-4 pt-4 flex items-baseline justify-between gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-900">Total</span>
-                <span className="font-display text-brand-700 text-[22px] font-black leading-none tracking-tight tabular-nums">
-                  ₹{total.toLocaleString()}
+                <span className="font-sans text-slate-900 text-[22px] font-extrabold leading-none tracking-normal tabular-nums">
+                  ₹{(total + delivery).toLocaleString()}
                 </span>
               </div>
 
@@ -169,7 +172,7 @@ export default function Cart() {
               </button>
 
               <Link to="/products"
-                className="flex items-center justify-center gap-1.5 mt-3.5 text-slate-400 text-[11px] font-semibold no-underline transition-colors hover:text-brand-700">
+                className="flex items-center justify-center gap-1.5 mt-3.5 text-slate-700 text-[11px] font-semibold no-underline transition-colors hover:text-brand-700">
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Continue Shopping
               </Link>

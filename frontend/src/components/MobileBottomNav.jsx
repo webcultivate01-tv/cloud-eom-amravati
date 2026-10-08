@@ -9,7 +9,7 @@ import MobileAccountSheet from "./MobileAccountSheet";
 /* Products.jsx listens for this to open its mobile filter drawer */
 export const OPEN_FILTERS_EVENT = "cg:open-mobile-filters";
 
-const BRAND = "#0672a7";
+const BRAND = "#05618e";
 
 /* Auth screens — the Account tab stays lit while the user is sitting on one */
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];

@@ -8,7 +8,7 @@ import { fetchCategories } from "../features/categories/categorySlice";
 import ProductCard from "../components/ProductCard";
 import { OPEN_FILTERS_EVENT } from "../components/MobileBottomNav";
 
-const BRAND = "#0672a7";
+const BRAND = "#05618e";
 
 /* Kept in step with .cg-drawer-out / .cg-overlay-out in index.css */
 const DRAWER_EXIT_MS = 300;
@@ -44,7 +44,7 @@ function useNavHeight() {
 
 const SectionLabel = ({ children }) => (
   <div className="flex items-center gap-3 mb-2.5">
-    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 whitespace-nowrap">
+    <h3 className="text-[11.5px] font-black uppercase tracking-[0.2em] text-slate-900 whitespace-nowrap">
       {children}
     </h3>
     <span className="flex-1 h-px bg-slate-200" />
@@ -173,15 +173,15 @@ export default function Products() {
   ].filter(Boolean);
 
   const navRow = (active) =>
-    `relative w-full flex items-center gap-2.5 text-left pl-2 pr-1.5 py-1.5 rounded-lg bg-transparent text-[12.5px] border-none cursor-pointer transition-colors duration-200 ${
-      active ? "text-slate-900 font-semibold" : "text-slate-500 font-normal hover:text-slate-900"
+    `relative w-full flex items-center gap-2.5 text-left pl-2 pr-1.5 py-2 rounded-lg bg-transparent text-[15px] border-none cursor-pointer transition-colors duration-200 ${
+      active ? "text-slate-900 font-extrabold" : "text-slate-700 font-semibold hover:text-slate-900"
     }`;
 
   const pill = (active) =>
-    `px-3 py-1.5 rounded-full bg-white text-[11.5px] border cursor-pointer whitespace-nowrap transition-colors duration-200 ${
+    `px-3 py-1.5 rounded-full bg-white text-[13px] border cursor-pointer whitespace-nowrap transition-colors duration-200 ${
       active
-        ? "border-slate-900 text-slate-900 font-semibold"
-        : "border-slate-200 text-slate-500 font-medium hover:border-slate-400 hover:text-slate-900"
+        ? "border-slate-900 text-slate-900 font-bold"
+        : "border-slate-200 text-slate-700 font-semibold hover:border-slate-400 hover:text-slate-900"
     }`;
 
   // A plain render function, not a component — keeps the search box from remounting
@@ -247,7 +247,7 @@ export default function Products() {
             className={navRow(!activeCategory)}
             onClick={() => { updateParams({ category: null, subcategory: null }); setSidebarOpen(false); }}
           >
-            <ChevronRight size={14} className={`shrink-0 ${!activeCategory ? "text-slate-900" : "text-slate-300"}`} />
+            <ChevronRight size={16} className={`shrink-0 ${!activeCategory ? "text-slate-900" : "text-slate-500"}`} />
             All Products
           </button>
 
@@ -268,7 +268,7 @@ export default function Products() {
                       else setSidebarOpen(false);
                     }}
                   >
-                    <ChevronRight size={14} className={`shrink-0 ${isCatActive ? "text-slate-900" : "text-slate-300"}`} />
+                    <ChevronRight size={16} className={`shrink-0 ${isCatActive ? "text-slate-900" : "text-slate-500"}`} />
                     <span className="truncate">{cat.name}</span>
                   </button>
 
@@ -293,10 +293,10 @@ export default function Products() {
                         <button
                           key={sub._id}
                           onClick={() => { updateParams({ category: cat.name, subcategory: sub.name }); setSidebarOpen(false); }}
-                          className={`text-left px-2.5 py-1 rounded-full text-[12px] border-none bg-transparent cursor-pointer transition-colors duration-200 ${
+                          className={`text-left px-2.5 py-1 rounded-full text-[14px] border-none bg-transparent cursor-pointer transition-colors duration-200 ${
                             isSubActive
-                              ? "text-slate-900 font-semibold"
-                              : "text-slate-500 hover:text-slate-900"
+                              ? "text-slate-900 font-extrabold"
+                              : "text-slate-700 font-semibold hover:text-slate-900"
                           }`}
                         >
                           {sub.name}
@@ -331,19 +331,19 @@ export default function Products() {
         <div className="pointer-events-none absolute -bottom-24 left-1/3 w-64 h-64 rounded-full bg-amber-400/[0.05] blur-3xl" />
 
         <div className="relative max-w-[1400px] mx-auto px-4 md:px-8 pt-4 pb-6 md:pt-5 md:pb-7">
-          <nav className="flex items-center gap-2 text-[11px] font-medium text-slate-400 mb-3.5">
+          <nav className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 mb-3.5">
             <Link to="/" className="hover:text-brand-700 transition-colors">Home</Link>
-            <span className="text-slate-300">/</span>
+            <span className="text-slate-500">/</span>
             <Link to="/products" className="hover:text-brand-700 transition-colors">Products</Link>
             {activeCategory && (
               <>
-                <span className="text-slate-300">/</span>
+                <span className="text-slate-500">/</span>
                 <span className={activeSubcategory ? "" : "text-slate-800"}>{activeCategory}</span>
               </>
             )}
             {activeSubcategory && (
               <>
-                <span className="text-slate-300">/</span>
+                <span className="text-slate-500">/</span>
                 <span className="text-slate-800">{activeSubcategory}</span>
               </>
             )}
@@ -351,23 +351,23 @@ export default function Products() {
 
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 mb-2">
-              <span className="w-6 h-px bg-brand-700" />
-              <span className="text-[9.5px] font-bold uppercase tracking-[0.28em] text-brand-700">
+              <span className="w-8 h-px bg-brand-700" />
+              <span className="text-[11.5px] font-extrabold uppercase tracking-[0.28em] text-brand-700">
                 {activeCategory ? "Collection" : "Shop All"}
               </span>
             </div>
 
-            <h1 className="font-display text-[26px] md:text-[34px] font-black text-slate-900 leading-[1.08] tracking-[-0.02em]">
+            <h1 className="font-display text-[30px] md:text-[40px] font-black text-slate-900 leading-[1.08] tracking-[-0.02em]">
               {heading}
             </h1>
 
-            <p className="text-slate-500 text-[12.5px] md:text-[13.5px] mt-2 max-w-xl leading-relaxed">
+            <p className="text-slate-700 font-medium text-[14px] md:text-[15.5px] mt-2 max-w-xl leading-relaxed">
               {subheading}
             </p>
 
-            <div className="flex items-center gap-2.5 mt-3.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <div className="flex items-center gap-2.5 mt-3.5 text-[12.5px] font-bold uppercase tracking-[0.16em] text-slate-600">
               <span>{loading ? "—" : visible.length} {visible.length === 1 ? "Item" : "Items"}</span>
-              <span className="w-1 h-1 rounded-full bg-slate-300" />
+              <span className="w-1 h-1 rounded-full bg-slate-500" />
               <span>Free design proof</span>
             </div>
           </div>

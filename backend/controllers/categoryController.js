@@ -43,7 +43,7 @@ const createCategory = async (req, res) => {
 // @route PUT /api/categories/:id  (admin)
 const updateCategory = async (req, res) => {
   try {
-    const { name, image, description, icon, isActive, sortOrder } = req.body;
+    const { name, image, description, icon, isActive, showInNavbar, sortOrder } = req.body;
     const cat = await Category.findById(req.params.id);
     if (!cat) return res.status(404).json({ message: "Category not found" });
 
@@ -55,6 +55,7 @@ const updateCategory = async (req, res) => {
     if (description !== undefined) cat.description = description;
     if (icon !== undefined) cat.icon = icon;
     if (isActive !== undefined) cat.isActive = isActive;
+    if (showInNavbar !== undefined) cat.showInNavbar = showInNavbar;
     if (sortOrder !== undefined) cat.sortOrder = sortOrder;
 
     const updated = await cat.save();

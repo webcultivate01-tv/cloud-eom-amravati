@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Reveal, { RevealGroup } from "../components/Reveal";
 
-const BRAND = "#0672a7";
+const BRAND = "#05618e";
 
 /* ── SVG Icons ── */
 const IconLogo = () => (
@@ -141,7 +141,7 @@ export default function Services() {
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(circle at 15% 12%, rgba(6,114,167,0.10), transparent 55%), radial-gradient(circle at 85% 85%, rgba(41,163,220,0.08), transparent 50%)",
+              "radial-gradient(circle at 15% 12%, rgba(5, 97, 142,0.10), transparent 55%), radial-gradient(circle at 85% 85%, rgba(41,163,220,0.08), transparent 50%)",
           }}
         />
         {/* Faint grid — a designer's artboard, not a stock photo */}
@@ -149,7 +149,7 @@ export default function Services() {
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(6,114,167,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(6,114,167,0.10) 1px, transparent 1px)",
+              "linear-gradient(rgba(5, 97, 142,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(5, 97, 142,0.10) 1px, transparent 1px)",
             backgroundSize: "48px 48px",
             maskImage: "radial-gradient(circle at 50% 40%, #000 10%, transparent 72%)",
             WebkitMaskImage: "radial-gradient(circle at 50% 40%, #000 10%, transparent 72%)",
@@ -186,7 +186,7 @@ export default function Services() {
             <Link
               to="/contact"
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white no-underline transition-transform hover:-translate-y-0.5"
-              style={{ background: BRAND, boxShadow: "0 4px 18px rgba(6,114,167,0.28)" }}
+              style={{ background: BRAND, boxShadow: "0 4px 18px rgba(5, 97, 142,0.28)" }}
             >
               Start a Project <IconArrow />
             </Link>
@@ -269,7 +269,7 @@ export default function Services() {
                 <div className="relative text-center lg:text-left">
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm mb-4 mx-auto lg:mx-0 relative z-10"
-                    style={{ background: BRAND, color: "#fff", boxShadow: "0 6px 16px rgba(6,114,167,0.30)" }}
+                    style={{ background: BRAND, color: "#fff", boxShadow: "0 6px 16px rgba(5, 97, 142,0.30)" }}
                   >
                     {step}
                   </div>
@@ -343,7 +343,7 @@ export default function Services() {
         >
           <div
             className="absolute inset-0"
-            style={{ background: "radial-gradient(circle at 50% 0%, rgba(6,114,167,0.10), transparent 62%)" }}
+            style={{ background: "radial-gradient(circle at 50% 0%, rgba(5, 97, 142,0.10), transparent 62%)" }}
           />
           <div className="relative" style={{ zIndex: 2 }}>
             <h2
@@ -360,7 +360,7 @@ export default function Services() {
               <Link
                 to="/contact"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white no-underline"
-                style={{ background: BRAND, boxShadow: "0 4px 18px rgba(6,114,167,0.28)" }}
+                style={{ background: BRAND, boxShadow: "0 4px 18px rgba(5, 97, 142,0.28)" }}
               >
                 Talk To Us <IconArrow />
               </Link>

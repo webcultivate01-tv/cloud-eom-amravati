@@ -35,9 +35,13 @@ const toggleBlockUser = async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Prevent blocking another admin
+    // Staff accounts are blocked from the screen that owns them, so the two
+    // lists cannot drift out of step
     if (user.role === "admin") {
       return res.status(403).json({ message: "Cannot block admin accounts from here" });
+    }
+    if (user.role === "employee") {
+      return res.status(403).json({ message: "Use Employee Management to block employees" });
     }
 
     user.isBlocked = !user.isBlocked;
@@ -62,6 +66,9 @@ const deleteUser = async (req, res) => {
 
     if (user.role === "admin") {
       return res.status(403).json({ message: "Use Admin Management to remove admins" });
+    }
+    if (user.role === "employee") {
+      return res.status(403).json({ message: "Use Employee Management to remove employees" });
     }
 
     await User.findByIdAndDelete(req.params.id);

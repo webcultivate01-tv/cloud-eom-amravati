@@ -5,6 +5,8 @@ const {
   getMyOrders,
   getOrderById,
   getAllOrders,
+  getRecentOrders,
+  markOrdersSeen,
   getOrderGroupCounts,
   updateOrderStatus,
   getDashboardStats,
@@ -12,16 +14,22 @@ const {
   cancelOrder,
 } = require("../controllers/orderController");
 const { protect } = require("../middleware/authMiddleware");
-const { adminOnly } = require("../middleware/adminMiddleware");
+const { requireModule, requireAnyModule } = require("../middleware/adminMiddleware");
 
 // Admin dashboard stats — must be before /:id
-router.get("/admin/stats", protect, adminOnly, getDashboardStats);
+router.get("/admin/stats", protect, requireAnyModule(["dashboard", "orders"]), getDashboardStats);
+
+// Admin: pending count + latest orders (sidebar badge / bell)
+router.get("/admin/recent", protect, requireModule("orders"), getRecentOrders);
+
+// Admin: opening the Orders page clears the new-order badge
+router.put("/admin/mark-seen", protect, requireModule("orders"), markOrdersSeen);
 
 // Admin: order counts per tab (Active / Delivered / Cancelled)
-router.get("/admin/group-counts", protect, adminOnly, getOrderGroupCounts);
+router.get("/admin/group-counts", protect, requireModule("orders"), getOrderGroupCounts);
 
 // Admin: view all orders
-router.get("/", protect, adminOnly, getAllOrders);
+router.get("/", protect, requireModule("orders"), getAllOrders);
 
 // User: place order
 router.post("/", protect, createOrder);
@@ -39,6 +47,6 @@ router.post("/:id/cancel-otp", protect, requestCancelOTP);
 router.put("/:id/cancel", protect, cancelOrder);
 
 // Admin: change order status
-router.put("/:id/status", protect, adminOnly, updateOrderStatus);
+router.put("/:id/status", protect, requireModule("orders"), updateOrderStatus);
 
 module.exports = router;

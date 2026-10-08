@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError } from "../features/auth/authSlice";
-import { useNavigate, Link } from "react-router-dom";
+import { homePathFor } from "../utils/panel";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import logoImg from "../assets/logo.png";
 
@@ -11,9 +12,14 @@ export default function Login() {
   const { user, loading, error } = useSelector((s) => s.auth);
   const [form, setForm]       = useState({ email: "", password: "" });
   const [showPass, setShowPass] = useState(false);
+  const [params] = useSearchParams();
+  const wasBlocked = params.get("blocked") === "1";
 
+  /* Admins land on their panel, employees on the first section they hold (or
+     the password screen while their temporary one stands), shoppers on the
+     storefront. One helper decides it so every entry point agrees. */
   useEffect(() => {
-    if (user) navigate(user.role === "admin" ? "/admin/dashboard" : "/");
+    if (user) navigate(homePathFor(user), { replace: true });
   }, [user, navigate]);
 
   useEffect(() => {
@@ -36,6 +42,15 @@ export default function Login() {
           <h1 className="text-2xl font-black text-gray-900 leading-tight">Welcome back 👋</h1>
           <p className="text-gray-400 text-sm mt-1">Sign in to your Cloud Graphics account</p>
         </div>
+
+        {wasBlocked && (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-amber-900 font-bold text-sm m-0">Your account has been blocked</p>
+            <p className="text-amber-700 text-xs mt-1 leading-relaxed">
+              You have been signed out. Contact the administrator to have access restored.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={(e) => { e.preventDefault(); dispatch(loginUser(form)); }} noValidate className="space-y-4">
 

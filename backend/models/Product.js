@@ -24,6 +24,13 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Delivery charge in ₹ per unit ordered. 0 = free delivery. Billed on top
+    // of the product price at checkout and itemised separately on the bill.
+    deliveryCharge: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     brand: {
       type: String,
       default: "",

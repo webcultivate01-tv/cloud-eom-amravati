@@ -1,37 +1,68 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
 
-    <!-- Full logo lockup — mark with the wordmark and tagline under it -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="shortcut icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <meta name="theme-color" content="#0672a7" />
+    <meta name="theme-color" content="#05618e" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Cloud Graphics Amravati" />
 
-    <title>Cloud Graphics Amravati — Custom Printed T-Shirts, Mugs & Corporate Gifts</title>
-    <meta
-      name="description"
-      content="Custom printing studio in Amravati. Personalised t-shirts, mugs, diaries, pens, ID cards and corporate merchandise — designed, printed and delivered across India."
-    />
-    <meta name="author" content="Cloud Graphics" />
+    <!-- Local SEO signals -->
+    <meta name="geo.region" content="IN-MH" />
+    <meta name="geo.placename" content="Amravati" />
+    <meta name="geo.position" content="20.8944121;77.7404454" />
+    <meta name="ICBM" content="20.8944121, 77.7404454" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Cloud Graphics" />
-    <meta property="og:title" content="Cloud Graphics Amravati — Custom Printed T-Shirts, Mugs & Corporate Gifts" />
-    <meta
-      property="og:description"
-      content="Custom printing and graphic design studio in Amravati, Maharashtra. Upload your artwork, approve the proof, and we print and ship it."
-    />
-    <meta property="og:image" content="/favicon.png" />
+    <meta property="og:site_name" content="Cloud Graphics Amravati" />
+    <meta property="og:locale" content="en_IN" />
     <meta name="twitter:card" content="summary" />
 
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!--
+      Page-specific block: <title>, description, canonical, robots, Open Graph and
+      JSON-LD. The build (seo/vitePlugin.js) rewrites it per route, and
+      PageTitle.jsx keeps it in step on client-side navigation.
+      The defaults below are the home page's.
+    -->
+    <!--SEO:HEAD-->
+    <title>Cloud Graphics Amravati — Custom Gifts, Printing &amp; Graphic Design</title>
+    <meta name="description" content="Custom gift shop and graphic design studio in Amravati. Personalised mugs, t-shirts, photo frames, corporate gifts, logo design, visiting cards and printing — home delivery." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <link rel="canonical" href="https://cloudgraphics.in/" />
+    <meta property="og:url" content="https://cloudgraphics.in/" />
+    <meta property="og:title" content="Cloud Graphics Amravati — Custom Gifts, Printing &amp; Graphic Design" />
+    <meta property="og:description" content="Custom gift shop and graphic design studio in Amravati. Personalised mugs, t-shirts, photo frames, corporate gifts, logo design, visiting cards and printing — home delivery." />
+    <meta property="og:image" content="https://cloudgraphics.in/favicon.png" />
+    <!--/SEO:HEAD-->
+
+    <!-- Site-wide structured data (stays on every page) -->
+    <script type="application/ld+json">__LOCAL_BUSINESS_JSONLD__</script>
+    <script type="application/ld+json">__WEBSITE_JSONLD__</script>
+
+    <!-- Fonts: connect early, load without blocking render. Footer/index.css no longer fetch these. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=Playfair+Display:wght@600;700;800;900&family=Montserrat:wght@700&display=swap"
+    />
+
+    <!-- Google tag (gtag.js). send_page_view is off: PageTitle.jsx reports every route, including the first. -->
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0QCSY96E2F"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-0QCSY96E2F', { send_page_view: false });
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--SEO:ROOT--></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

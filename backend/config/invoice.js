@@ -1,32 +1,34 @@
 const fs = require("fs");
-const path = require("path");
-const sharp = require("sharp");
+const QRCode = require("qrcode");
 const PDFDocument = require("pdfkit");
 const {
-  COMPANY, BRAND, LOGO_WHITE, round2, splitGst,
+  COMPANY, BANK, LOGO_DARK, SIGNATURE, round2, splitGst,
 } = require("./company");
-const { uploadsPathFromUrl, UPLOADS_ROOT } = require("./localUpload");
 
 /* ══════════════════════════════════════════════════════════════
-   TAX INVOICE
+   BILL OF SUPPLY
 
-   One page, four blocks: brand band -> invoice meta + Bill To ->
-   items table with the tax summary folded into its last rows ->
-   signature. Nothing is printed below the signature: no page
-   numbers, no site name, no "about" strip.
+   One A4 page in a gold frame: company masthead -> invoice no. and
+   date -> Bill To -> items table with a subtotal row -> bank details
+   and UPI QR on the left, totals and signature on the right.
 
-   Catalogue prices are GST-inclusive, so the tax lines are derived
-   from the amount actually charged rather than added on top of it.
-   The grand total therefore always matches what the customer paid,
-   to the paisa.
+   Catalogue prices are what the customer is charged, so the bill
+   states them as they are — the total always matches the order to
+   the paisa. `buildInvoiceModel` still carries the GST split for the
+   admin summary and reports; it just isn't printed here.
 ══════════════════════════════════════════════════════════════ */
 
-const PAGE_MARGIN = 40;
+const MARGIN = 44;
+const GOLD = "#d4b25a";
+const CREAM = "#f9f3e3";
+const INK = "#1f2937";
+const MUTED = "#6b7280";
+const NAVY = "#25395a";
 
-/** "3 Sept 2026" — date only. Invoices carry no time of day. */
+/** "22/09/2026" — date only. Invoices carry no time of day. */
 const invoiceDate = (d) =>
-  new Date(d || Date.now()).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
+  new Date(d || Date.now()).toLocaleDateString("en-GB", {
+    day: "2-digit", month: "2-digit", year: "numeric",
   });
 
 /**
@@ -44,310 +46,256 @@ const financialYear = (d = new Date()) => {
 const formatInvoiceNumber = (seq, date) =>
   `CG/${financialYear(date)}/${String(seq).padStart(4, "0")}`;
 
-const ITEM_IMAGE_SIZE = 24; // px, square, drawn into the item row
+/* ── Amount in words (Indian grouping: lakh, crore) ─────────── */
 
-/**
- * Load a line item's product photo and hand back a small square PNG
- * buffer ready for `doc.image`. Product photos are saved in whatever
- * format the admin uploaded (webp/avif/gif included), which PDFKit
- * cannot embed directly — sharp re-encodes to PNG and crops to a
- * uniform thumbnail so every row lines up regardless of the source
- * image's aspect ratio.
- *
- * Resolves to null for anything that isn't one of our own local
- * uploads, is missing from disk, or fails to decode — the row just
- * prints without a thumbnail rather than breaking the invoice.
- */
-const resolveItemImage = async (imageUrl) => {
-  try {
-    const relative = uploadsPathFromUrl(imageUrl);
-    if (!relative) return null;
-    const abs = path.resolve(UPLOADS_ROOT, relative);
-    if (!fs.existsSync(abs)) return null;
-    return await sharp(abs)
-      .resize(ITEM_IMAGE_SIZE * 2, ITEM_IMAGE_SIZE * 2, { fit: "cover" })
-      .png()
-      .toBuffer();
-  } catch {
-    return null;
-  }
+const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+  "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+const below1000 = (n) => {
+  const parts = [];
+  if (n >= 100) { parts.push(`${ONES[Math.floor(n / 100)]} Hundred`); n %= 100; }
+  if (n >= 20) { parts.push(TENS[Math.floor(n / 10)]); n %= 10; }
+  if (n > 0) parts.push(ONES[n]);
+  return parts.join(" ");
+};
+
+/** 1250 -> "One Thousand Two Hundred Fifty Rupees"; 99.5 -> "... Rupees and Fifty Paise" */
+const amountInWords = (amount) => {
+  const total = round2(amount);
+  let rupees = Math.floor(total);
+  const paise = Math.round((total - rupees) * 100);
+
+  const words = [];
+  [[10000000, "Crore"], [100000, "Lakh"], [1000, "Thousand"]].forEach(([unit, name]) => {
+    if (rupees >= unit) { words.push(`${below1000(Math.floor(rupees / unit))} ${name}`); rupees %= unit; }
+  });
+  if (rupees > 0) words.push(below1000(rupees));
+
+  let out = `${words.join(" ") || "Zero"} Rupees`;
+  if (paise > 0) out += ` and ${below1000(paise)} Paise`;
+  return out;
+};
+
+/** "1,250" or "1,250.50" — whole rupees print without decimals, like the reference bill. */
+const money = (n) => {
+  const v = round2(n);
+  return v.toLocaleString("en-IN", {
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
 };
 
 /* ── Drawing helpers ─────────────────────────────────────────── */
 
-const line = (doc, x1, y1, x2, y2, color = BRAND.line, width = 0.7) =>
-  doc.save().lineWidth(width).strokeColor(color).moveTo(x1, y1).lineTo(x2, y2).stroke().restore();
+const hline = (doc, x1, x2, y, color = GOLD, width = 1) =>
+  doc.save().lineWidth(width).strokeColor(color).moveTo(x1, y).lineTo(x2, y).stroke().restore();
 
-const box = (doc, x, y, w, h, color = BRAND.line, width = 0.7) =>
-  doc.save().lineWidth(width).strokeColor(color).rect(x, y, w, h).stroke().restore();
-
-/** "093076 41746" -> "+91 9307641746" — the leading trunk zero is dropped for the country code. */
-const formatPhone = (phone) => `+91 ${String(phone).replace(/\D/g, "").replace(/^0+/, "")}`;
-
-/**
- * One right-aligned "Label: value" pair with the label bold and the value
- * regular weight — PDFKit has no mixed-weight run within a single `.text`
- * call, so the two pieces are measured and placed by hand, right edge
- * anchored to `rightX`.
- */
-const drawRightLabelValue = (doc, label, value, rightX, y, { size = 8.5, color = "#cfe6f5" } = {}) => {
-  const gap = 4;
-  doc.font("Helvetica").fontSize(size);
-  const valueW = doc.widthOfString(value);
-  doc.font("Helvetica-Bold").fontSize(size);
-  const labelW = doc.widthOfString(label);
-
-  let x = rightX - labelW - gap - valueW;
-  doc.fillColor(color).text(label, x, y, { lineBreak: false });
-  x += labelW + gap;
-  doc.font("Helvetica").fillColor(color).text(value, x, y, { lineBreak: false });
+/** Gold double frame around the page. */
+const drawFrame = (doc) => {
+  const { width: W, height: H } = doc.page;
+  doc.save().lineWidth(1.6).strokeColor(GOLD).rect(20, 20, W - 40, H - 40).stroke().restore();
+  doc.save().lineWidth(0.4).strokeColor(GOLD).rect(25, 25, W - 50, H - 50).stroke().restore();
 };
 
-/**
- * Brand band across the top: white logo on the left, business identity
- * on the right. This is the only heavy block on the page — everything
- * below it is quiet rules and text.
- */
+/** Bold label then regular value on one line, starting at x. */
+const labelValue = (doc, label, value, x, y, { size = 9, gap = 4 } = {}) => {
+  doc.font("Helvetica-Bold").fontSize(size);
+  const w = doc.widthOfString(label);
+  doc.fillColor(INK).text(label, x, y, { lineBreak: false });
+  doc.font("Helvetica").fillColor(MUTED).text(value, x + w + gap, y, { lineBreak: false });
+};
+
+/** Masthead: logo and company details left, "BILL OF SUPPLY" tag right. */
 const drawHeader = (doc) => {
   const W = doc.page.width;
-  const bandH = 108;
+  const right = W - MARGIN;
 
-  doc.save().rect(0, 0, W, bandH).fill(BRAND.band).restore();
-  // A thin brighter edge picks up the lighter blue in the logo mark.
-  doc.save().rect(0, bandH, W, 3).fill(BRAND.primary).restore();
+  if (fs.existsSync(LOGO_DARK)) doc.image(LOGO_DARK, MARGIN, 46, { fit: [112, 84] });
 
-  if (fs.existsSync(LOGO_WHITE)) {
-    doc.image(LOGO_WHITE, PAGE_MARGIN, 18, { fit: [100, 56] });
+  const tx = MARGIN + 130;
+  doc.font("Times-Bold").fontSize(22).fillColor(INK)
+     .text("CLOUD GRAPHICS.in", tx, 48, { lineBreak: false });
+
+  labelValue(doc, "Pan No", COMPANY.pan, tx, 78);
+  labelValue(doc, "Phone:", COMPANY.phone, tx, 96);
+  labelValue(doc, "Email:", COMPANY.email, tx + 120, 96);
+
+  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED)
+     .text(`${COMPANY.address1}, ${COMPANY.address2}`, tx, 114, { width: right - tx });
+  labelValue(doc, "Website:", COMPANY.website, tx, 138, { size: 8.5 });
+
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(NAVY)
+     .text("BILL OF SUPPLY", MARGIN, 50, { width: right - MARGIN, align: "right" });
+  const tagW = 104;
+  doc.save().lineWidth(0.5).strokeColor(MUTED)
+     .roundedRect(right - tagW, 66, tagW, 14, 2).stroke().restore();
+  doc.font("Helvetica").fontSize(5.5).fillColor(MUTED)
+     .text("ORIGINAL FOR RECIPIENT", right - tagW, 71, { width: tagW, align: "center", characterSpacing: 0.2 });
+
+  const bottom = 162;
+  hline(doc, 25, W - 25, bottom, GOLD, 1);
+  return bottom;
+};
+
+const drawMeta = (doc, top, { invoiceNumber, date }) => {
+  const W = doc.page.width;
+  const y = top + 14;
+  [["Invoice No.", invoiceNumber, MARGIN], ["Invoice Date", invoiceDate(date), MARGIN + 150]].forEach(([k, v, x]) => {
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(k, x, y, { lineBreak: false });
+    doc.font("Helvetica").fontSize(9.5).fillColor(MUTED).text(v, x, y + 14, { lineBreak: false });
+  });
+  const bottom = y + 42;
+  hline(doc, 25, W - 25, bottom, GOLD, 1);
+  return bottom;
+};
+
+const drawBillTo = (doc, top, { name, phone, address }) => {
+  const W = doc.page.width;
+  let y = top + 14;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(NAVY).text("Bill To", MARGIN, y, { lineBreak: false });
+  y += 16;
+  doc.font("Helvetica").fontSize(11).fillColor(INK).text(name, MARGIN, y, { width: W - MARGIN * 2 });
+  y = doc.y + 2;
+  labelValue(doc, "Mobile", phone, MARGIN, y, { size: 9 });
+  y += 14;
+  if (address && address !== "—") {
+    doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(address, MARGIN, y, { width: W - MARGIN * 2 - 60 });
+    y = doc.y;
   }
-
-  const rx = PAGE_MARGIN + 130;
-  const rw = W - rx - PAGE_MARGIN;
-  const rightEdge = W - PAGE_MARGIN;
-
-  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(17)
-     .text(COMPANY.legalName.toUpperCase(), rx, 20, { width: rw, align: "right" });
-
-  doc.font("Helvetica").fontSize(8.5).fillColor("#cfe6f5");
-  doc.text(`${COMPANY.address1}, ${COMPANY.address2}`, rx, 43, { width: rw, align: "right" });
-
-  let cy = 58;
-  [
-    ["Email:", COMPANY.email],
-    ["Mobile:", formatPhone(COMPANY.phone)],
-    ["Website:", COMPANY.website],
-  ].forEach(([label, value]) => {
-    drawRightLabelValue(doc, label, value, rightEdge, cy);
-    cy += 11;
-  });
-
-  return bandH + 3;
+  return y + 12;
 };
 
-/** Invoice No., Order Number, Invoice Date and Payment Method side by side in one row. */
-const drawMeta = (doc, top, { invoiceNumber, date, orderId, paymentLabel }) => {
-  const W = doc.page.width;
-  const rw = W - PAGE_MARGIN * 2;
-  const y = top + 22;
-
-  const cols = [
-    { label: "Invoice No.",    value: invoiceNumber,       w: 118 },
-    { label: "Order Number",   value: orderId,             w: 118 },
-    { label: "Invoice Date",   value: invoiceDate(date),   w: 100 },
-    { label: "Payment Method", value: paymentLabel || "—", w: 0 }, // fills the remainder
-  ];
-  cols[3].w = rw - cols[0].w - cols[1].w - cols[2].w;
-  let cx = PAGE_MARGIN;
-  cols.forEach((c) => { c.x = cx; cx += c.w; });
-
-  doc.font("Helvetica-Bold").fontSize(9.5);
-  const valueH = Math.max(...cols.map((c) => doc.heightOfString(c.value, { width: c.w - 12 })));
-
-  cols.forEach((c) => {
-    doc.font("Helvetica").fontSize(8).fillColor(BRAND.muted)
-       .text(c.label, c.x, y, { width: c.w - 12 });
-    doc.font("Helvetica-Bold").fontSize(9.5).fillColor(BRAND.ink)
-       .text(c.value, c.x, y + 11, { width: c.w - 12 });
-  });
-
-  return y + 11 + valueH + 16;
-};
-
-/** Bill To panel — the customer block, boxed like the reference bill. */
-const drawBillTo = (doc, top, { name, phone, email, address }) => {
-  const W = doc.page.width;
-  const w = W - PAGE_MARGIN * 2;
-
-  const rows = [
-    ["Customer Name", name || "—"],
-    ["Phone No", phone || "—"],
-    ...(email ? [["Email", email]] : []),
-    ["Address", address || "—"],
-  ];
-
-  // Measure first so a long address wraps inside the box instead of clipping.
-  doc.font("Helvetica-Bold").fontSize(9);
-  const addrH = doc.heightOfString(address || "—", { width: w - 112 });
-  const h = 27 + (rows.length - 1) * 15 + Math.max(addrH, 12) + 10;
-
-  doc.save().rect(PAGE_MARGIN, top, w, 20).fill(BRAND.light).restore();
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(BRAND.dark)
-     .text("BILL TO", PAGE_MARGIN + 10, top + 6.5, { characterSpacing: 0.6 });
-
-  let y = top + 27;
-  rows.forEach(([k, v]) => {
-    doc.font("Helvetica").fontSize(9).fillColor(BRAND.muted)
-       .text(`${k}:`, PAGE_MARGIN + 10, y, { width: 92 });
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(BRAND.ink)
-       .text(String(v), PAGE_MARGIN + 102, y, { width: w - 112 });
-    y += k === "Address" ? Math.max(addrH, 12) + 3 : 15;
-  });
-
-  box(doc, PAGE_MARGIN, top, w, h, BRAND.ink, 0.9);
-  return top + h;
-};
-
-/* Column geometry: the description takes the slack, the numeric columns
-   are fixed so decimal points line up down the page. */
+/* Description takes the slack; the numeric columns are fixed so figures line up. */
 const itemColumns = (w) => {
   const cols = [
-    { key: "no",     label: "No.",              w: 28, align: "center" },
-    { key: "title",  label: "Item Description", w: w - 238, align: "left" },
-    { key: "qty",    label: "Qty",              w: 40, align: "center" },
-    { key: "rate",   label: "Rate (Rs.)",       w: 78, align: "right" },
-    { key: "amount", label: "Amount (Rs.)",     w: 92, align: "right" },
+    { key: "no",    label: "No",             w: 44,  align: "center" },
+    { key: "title", label: "ITEMS/SERVICES", w: w - 44 - 70 - 70 - 90, align: "left" },
+    { key: "qty",   label: "Qty.",           w: 70,  align: "right" },
+    { key: "rate",  label: "Rate",           w: 70,  align: "right" },
+    { key: "total", label: "Total",          w: 90,  align: "right" },
   ];
-  let cx = PAGE_MARGIN;
+  let cx = MARGIN;
   cols.forEach((c) => { c.x = cx; cx += c.w; });
   return cols;
 };
 
-/** Height of one item row — the wrapped description (or the thumbnail) sets it. */
-const rowHeight = (doc, col, title, hasImage) => {
-  doc.font("Helvetica").fontSize(9);
-  const textW = col.w - 14 - (hasImage ? ITEM_IMAGE_SIZE + 8 : 0);
-  const minH = hasImage ? ITEM_IMAGE_SIZE + 12 : 26;
-  return Math.max(doc.heightOfString(title, { width: textW }) + 14, minH);
-};
+const FOOTER_H = 236; // bank/QR + totals + signature, kept together on one page
 
-/**
- * Items table plus the tax summary. The summary rows share the table's
- * grid so the whole thing reads as one block, as the reference bill
- * does — but with the standard taxable-value -> CGST -> SGST -> total
- * sequence rather than a repeated gross figure.
- */
-const drawItems = (doc, top, { items, totals }) => {
+const drawItems = (doc, top, { items, itemsTotal }) => {
   const W = doc.page.width;
-  const w = W - PAGE_MARGIN * 2;
-  const x0 = PAGE_MARGIN;
+  const H = doc.page.height;
+  const w = W - MARGIN * 2;
   const cols = itemColumns(w);
-  const HEAD_H = 24;
+  const cell = (col, text, y, opts = {}) =>
+    doc.text(String(text), col.x + 8, y, { width: col.w - 16, align: col.align, ...opts });
 
-  const cellText = (col, text, y) =>
-    doc.text(String(text), col.x + 7, y, { width: col.w - 14, align: col.align });
-
-  // Header row
-  doc.save().rect(x0, top, w, HEAD_H).fill(BRAND.dark).restore();
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#ffffff");
-  cols.forEach((c) => cellText(c, c.label.toUpperCase(), top + 8));
-
-  let y = top + HEAD_H;
-
-  items.forEach((it, i) => {
-    const hasImage = Boolean(it.image);
-    const h = rowHeight(doc, cols[1], it.title, hasImage);
-    if (i % 2 === 1) doc.save().rect(x0, y, w, h).fill("#fafcfe").restore();
-
-    doc.font("Helvetica").fontSize(9).fillColor(BRAND.muted);
-    cellText(cols[0], i + 1, y + 8);
-
-    let titleX = cols[1].x + 7;
-    let titleW = cols[1].w - 14;
-    if (hasImage) {
-      const imgY = y + (h - ITEM_IMAGE_SIZE) / 2;
-      try {
-        doc.save().roundedRect(titleX, imgY, ITEM_IMAGE_SIZE, ITEM_IMAGE_SIZE, 3).clip();
-        doc.image(it.image, titleX, imgY, { width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE });
-        doc.restore();
-      } catch {
-        // A corrupt/undecodable thumbnail must never break the invoice.
-      }
-      titleX += ITEM_IMAGE_SIZE + 8;
-      titleW -= ITEM_IMAGE_SIZE + 8;
-    }
-
-    doc.font("Helvetica").fontSize(9).fillColor(BRAND.ink)
-       .text(it.title, titleX, y + 8, { width: titleW });
-    doc.font("Helvetica").fontSize(8.5).fillColor(BRAND.muted);
-    cellText(cols[2], it.qty, y + 8);
-    doc.font("Helvetica").fontSize(9).fillColor(BRAND.ink);
-    cellText(cols[3], Number(it.rate).toFixed(2), y + 8);
-    doc.font("Helvetica-Bold");
-    cellText(cols[4], Number(it.amount).toFixed(2), y + 8);
-
-    y += h;
-    line(doc, x0, y, x0 + w, y, BRAND.line, 0.5);
-  });
-
-  const itemsBottom = y;
-
-  /* Tax summary — the label spans every column up to Amount, so each
-     figure stays in the same column as the item amounts above it. */
-  const labelW = cols[4].x - x0;
-  const summaryRow = (label, value, { bold = false, fill = null } = {}) => {
-    const h = bold ? 27 : 22;
-    if (fill) doc.save().rect(x0, y, w, h).fill(fill).restore();
-    /* The total row sets its label and its figure at different sizes, and
-       PDFKit positions text by its top edge rather than its baseline — so
-       the smaller label is nudged down by the ascender difference to sit
-       on the same line as the figure beside it. */
-    const labelSize = bold ? 10 : 9;
-    const valueSize = bold ? 11 : 9;
-    const pad = bold ? 8.5 : 7;
-    const ASCENDER = 0.718; // Helvetica, as a fraction of point size
-    const labelPad = pad + (valueSize - labelSize) * ASCENDER;
-
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica")
-       .fontSize(labelSize)
-       .fillColor(bold ? BRAND.dark : BRAND.muted)
-       .text(label, x0 + 7, y + labelPad, { width: labelW - 14, align: "right" });
-    doc.font("Helvetica-Bold").fontSize(valueSize)
-       .fillColor(bold ? BRAND.dark : BRAND.ink)
-       .text(Number(value).toFixed(2), cols[4].x + 7, y + pad,
-             { width: cols[4].w - 14, align: "right" });
-    y += h;
-    line(doc, x0, y, x0 + w, y, BRAND.line, 0.5);
+  const drawHead = (y) => {
+    doc.save().rect(MARGIN, y, w, 26).fill(CREAM).restore();
+    doc.font("Helvetica").fontSize(9).fillColor(INK);
+    cols.forEach((c) => cell(c, c.label, y + 9));
+    return y + 26;
   };
 
-  summaryRow("Taxable Value", totals.taxable);
-  summaryRow(`CGST @ ${totals.cgstRate}%`, totals.cgst);
-  summaryRow(`SGST @ ${totals.sgstRate}%`, totals.sgst);
-  summaryRow("Total Amount", totals.gross, { bold: true, fill: BRAND.light });
+  let y = drawHead(top);
+  const bodyStart = y;
 
-  /* Column rules stop where the summary begins — the summary spans
-     columns and must not be cut by them. Drawn before the outer frame
-     so the frame stays the crispest line on the block. */
-  cols.slice(1).forEach((c) => line(doc, c.x, top, c.x, itemsBottom, BRAND.line, 0.5));
-  box(doc, x0, top, w, y - top, BRAND.ink, 0.9);
+  items.forEach((it, i) => {
+    doc.font("Helvetica").fontSize(9.5);
+    const titleH = doc.heightOfString(it.title, { width: cols[1].w - 16 });
+    const subH = it.sub ? 11 : 0;
+    const h = Math.max(titleH + subH + 20, 34);
 
-  return y;
+    // Leave room for the footer on the last page; otherwise continue on a fresh one.
+    if (y + h > H - 60 - (i === items.length - 1 ? FOOTER_H : 0)) {
+      doc.addPage();
+      drawFrame(doc);
+      y = drawHead(50);
+    }
+
+    doc.font("Helvetica").fontSize(9.5).fillColor(INK);
+    cell(cols[0], i + 1, y + 10);
+    cell(cols[1], it.title, y + 10);
+    if (it.sub) {
+      doc.font("Helvetica").fontSize(7.5).fillColor(MUTED);
+      cell(cols[1], it.sub, y + 10 + titleH + 1);
+    }
+    doc.font("Helvetica").fontSize(9.5).fillColor(INK);
+    cell(cols[2], `${it.qty} ${it.unit}`, y + 10);
+    cell(cols[3], money(it.rate), y + 10);
+    cell(cols[4], money(it.amount), y + 10);
+    y += h;
+  });
+
+  // Keep a little breathing room under short orders, like the reference bill.
+  y = Math.max(y, bodyStart + 170);
+
+  doc.save().rect(MARGIN, y, w, 26).fill(CREAM).restore();
+  doc.font("Helvetica-Bold").fontSize(9.5).fillColor(INK);
+  cell(cols[1], "SUBTOTAL", y + 8);
+  cell(cols[2], items.reduce((n, it) => n + Number(it.qty), 0), y + 8);
+  cell(cols[4], `Rs. ${money(itemsTotal)}`, y + 8);
+  return y + 26;
 };
 
-/**
- * Signature block. Payment method is already shown up in the invoice
- * meta, so it isn't repeated down here. The page ends here on purpose —
- * nothing is printed below it.
- */
-const drawFooter = (doc, top) => {
+const drawFooter = async (doc, top, model) => {
   const W = doc.page.width;
-  const sigTop = top + 16;
-  const sigX1 = W - PAGE_MARGIN - 160;
-  const sigX2 = W - PAGE_MARGIN;
+  const H = doc.page.height;
+  const right = W - MARGIN;
+  const { totals, received, itemsTotal, deliveryCharge } = model;
 
-  line(doc, sigX1, sigTop + 56, sigX2, sigTop + 56, BRAND.ink, 0.8);
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(BRAND.ink)
-     .text("Authorised Signatory", sigX1, sigTop + 62, { width: sigX2 - sigX1, align: "center" });
+  if (top + FOOTER_H > H - 40) { doc.addPage(); drawFrame(doc); top = 50; }
 
-  return sigTop + 78;
+  /* Left — bank details and payment QR */
+  let y = top + 18;
+  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Bank Details", MARGIN, y, { lineBreak: false });
+  y += 17;
+  [["Name", BANK.holder], ["IFSC", BANK.ifsc], ["Account No", BANK.account], ["Bank Name", BANK.bank]].forEach(([k, v]) => {
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(k, MARGIN, y, { lineBreak: false });
+    doc.font("Helvetica").fontSize(9).fillColor(MUTED).text(v, MARGIN + 70, y, { lineBreak: false });
+    y += 15;
+  });
+
+  const balance = round2(totals.gross - received);
+  const upi = `upi://pay?pa=${BANK.upiId}&pn=${encodeURIComponent(COMPANY.legalName)}&cu=INR` +
+    (balance > 0 ? `&am=${balance.toFixed(2)}` : "");
+  const qr = await QRCode.toBuffer(upi, { margin: 0, width: 220 });
+
+  const qrTop = y + 10;
+  doc.save().lineWidth(0.7).strokeColor(GOLD).roundedRect(MARGIN, qrTop, 220, 66, 6).stroke().restore();
+  doc.image(qr, MARGIN + 10, qrTop + 8, { width: 50, height: 50 });
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Payment QR Code", MARGIN + 72, qrTop + 14, { lineBreak: false });
+  doc.font("Helvetica").fontSize(8).fillColor(MUTED)
+     .text("PhonePe · GPay · Paytm · UPI", MARGIN + 72, qrTop + 28, { lineBreak: false });
+  labelValue(doc, "UPI ID:", BANK.upiId, MARGIN + 72, qrTop + 42, { size: 8 });
+
+  /* Right — totals, amount in words, signature */
+  const rx = 300;
+  hline(doc, rx, right, top + 14, GOLD, 1);
+  [["Product Cost", itemsTotal, top + 22], ["Delivery Charges", deliveryCharge, top + 38]].forEach(([label, amt, ly]) => {
+    doc.font("Helvetica").fontSize(9).fillColor(MUTED).text(label, rx, ly, { lineBreak: false });
+    doc.fillColor(INK).text(amt > 0 || label === "Product Cost" ? `Rs. ${money(amt)}` : "Free", rx, ly, { width: right - rx, align: "right" });
+  });
+  hline(doc, rx, right, top + 56, GOLD, 0.6);
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(INK).text("Total Amount", rx, top + 64, { lineBreak: false });
+  doc.text(`Rs. ${money(totals.gross)}`, rx, top + 64, { width: right - rx, align: "right" });
+  hline(doc, rx, right, top + 86, GOLD, 0.6);
+  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Received Amount", rx, top + 95, { lineBreak: false });
+  doc.text(`Rs. ${money(received)}`, rx, top + 95, { width: right - rx, align: "right" });
+
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Total Amount (in words)", rx, top + 118, { lineBreak: false });
+  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(amountInWords(totals.gross), rx, top + 131, { width: right - rx });
+
+  const sigTop = top + 156;
+  doc.save().lineWidth(0.7).strokeColor(GOLD).roundedRect(rx, sigTop, right - rx, 74, 8).stroke().restore();
+  if (fs.existsSync(SIGNATURE)) {
+    doc.image(SIGNATURE, rx + 40, sigTop + 6, { fit: [right - rx - 80, 36], align: "center", valign: "bottom" });
+  }
+  hline(doc, rx + 40, right - 40, sigTop + 44, MUTED, 0.6);
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK)
+     .text("Signature", rx, sigTop + 50, { width: right - rx, align: "center" });
+  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED)
+     .text(`${COMPANY.legalName.toUpperCase()}.in`, rx, sigTop + 62, { width: right - rx, align: "center" });
 };
 
 /**
@@ -357,17 +305,20 @@ const drawFooter = (doc, top) => {
  */
 const buildInvoiceModel = (order) => {
   const items = (order.items || []).map((it) => ({
-    title: it.size ? `${it.name}  (Size: ${it.size})` : it.name,
+    title: it.name,
+    sub: it.size ? `Size: ${it.size}` : "",
     qty: it.quantity,
+    unit: "PCS",
     rate: round2(it.price),
     amount: round2(it.price * it.quantity),
-    // Populated by the caller as `items.product` — falls back to "" when the
-    // product was deleted or the query didn't populate it, and the row then
-    // simply prints without a thumbnail.
-    imageUrl: (it.product && it.product.image) || "",
   }));
 
   const totals = splitGst(order.totalPrice);
+  // Product cost is recomputed from the lines; delivery is whatever remains of
+  // the total, so the two always add up to it — including on orders placed
+  // before delivery charges were stored (those come out as 0 / Free).
+  const itemsTotal = round2(items.reduce((s, it) => s + it.amount, 0));
+  const deliveryCharge = Math.max(round2(order.totalPrice - itemsTotal), 0);
 
   const addr = order.shippingAddress || {};
   const addressText = [
@@ -401,7 +352,10 @@ const buildInvoiceModel = (order) => {
       address: addressText || "—",
     },
     items,
+    itemsTotal,
+    deliveryCharge,
     totals,
+    received: paid ? totals.gross : 0,
     paymentLabel,
   };
 };
@@ -410,30 +364,28 @@ const buildInvoiceModel = (order) => {
  * Render the invoice into a PDFKit document. The caller pipes it
  * wherever it needs to go — an HTTP response, or a buffer for email.
  *
- * Async because each line item's product thumbnail has to be read off
- * disk and re-encoded before drawing starts — PDFKit itself stays a
- * plain synchronous document once that's done.
+ * Async because the payment QR is generated before drawing starts —
+ * PDFKit itself stays a plain synchronous document once that's done.
  */
 const renderInvoice = async (order) => {
   const model = buildInvoiceModel(order);
-  const images = await Promise.all(model.items.map((it) => resolveItemImage(it.imageUrl)));
-  model.items.forEach((it, i) => { it.image = images[i]; });
 
   const doc = new PDFDocument({
     size: "A4",
-    margin: PAGE_MARGIN,
+    margin: MARGIN,
     info: {
-      Title: `Tax Invoice ${model.invoiceNumber}`,
+      Title: `Bill of Supply ${model.invoiceNumber}`,
       Author: COMPANY.name,
-      Subject: `Invoice for order ${model.orderId}`,
+      Subject: `Bill for order ${model.orderId}`,
     },
   });
 
+  drawFrame(doc);
   let y = drawHeader(doc);
   y = drawMeta(doc, y, model);
   y = drawBillTo(doc, y, model.customer);
-  y = drawItems(doc, y + 16, model);
-  drawFooter(doc, y);
+  y = drawItems(doc, y, model);
+  await drawFooter(doc, y, model);
 
   doc.end();
   return doc;

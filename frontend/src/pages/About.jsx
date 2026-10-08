@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Reveal, { RevealGroup } from "../components/Reveal";
 
-const BRAND = "#0672a7";
+const BRAND = "#05618e";
 
 /* ── SVG Icons ── */
 const IconPrint = () => (
@@ -100,7 +100,7 @@ export default function About() {
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(circle at 18% 10%, rgba(6,114,167,0.10), transparent 55%), radial-gradient(circle at 88% 85%, rgba(41,163,220,0.08), transparent 52%)",
+              "radial-gradient(circle at 18% 10%, rgba(5, 97, 142,0.10), transparent 55%), radial-gradient(circle at 88% 85%, rgba(41,163,220,0.08), transparent 52%)",
           }}
         />
         {/* Faint artboard grid, faded off at the edges */}
@@ -108,7 +108,7 @@ export default function About() {
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(6,114,167,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(6,114,167,0.10) 1px, transparent 1px)",
+              "linear-gradient(rgba(5, 97, 142,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(5, 97, 142,0.10) 1px, transparent 1px)",
             backgroundSize: "48px 48px",
             maskImage: "radial-gradient(circle at 50% 40%, #000 8%, transparent 70%)",
             WebkitMaskImage: "radial-gradient(circle at 50% 40%, #000 8%, transparent 70%)",
@@ -125,23 +125,23 @@ export default function About() {
             <span style={{ color: BRAND }}>You Imagine</span>
           </Reveal>
 
-          <Reveal as="p" delay={120} className="text-gray-600 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
+          <Reveal as="p" delay={120} className="text-gray-900 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
             Cloud Graphics is a custom printing studio in Amravati, Maharashtra. From a single
             personalised mug to a full corporate merchandise run, we handle design, print and
             delivery under one roof — so your idea reaches you finished, not half-done.
           </Reveal>
 
-          <Reveal delay={240} className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
+          <Reveal delay={240} className="flex flex-row gap-4 sm:gap-5 justify-center mt-8">
             <Link
               to="/products"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white no-underline transition-transform hover:-translate-y-0.5"
-              style={{ background: BRAND, boxShadow: "0 4px 18px rgba(6,114,167,0.28)" }}
+              className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap text-white no-underline transition-transform hover:-translate-y-0.5"
+              style={{ background: BRAND, boxShadow: "0 4px 18px rgba(5, 97, 142,0.28)" }}
             >
               Explore Products <IconArrow />
             </Link>
             <Link
               to="/services"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm no-underline bg-white transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap no-underline bg-white transition-transform hover:-translate-y-0.5"
               style={{ color: BRAND, border: "1px solid #cfe7f5", boxShadow: "0 2px 10px rgba(15,23,42,0.05)" }}
             >
               Our Services
@@ -158,7 +158,7 @@ export default function About() {
               >
                 <p className="text-xl md:text-2xl font-black leading-none" style={{ color: BRAND }}>{value}</p>
                 <p
-                  className="text-[10px] md:text-xs uppercase mt-1.5 text-gray-400 font-semibold"
+                  className="text-[10px] md:text-xs uppercase mt-1.5 text-gray-700 font-semibold"
                   style={{ letterSpacing: "0.1em" }}
                 >
                   {label}
@@ -182,7 +182,7 @@ export default function About() {
             >
               A local print shop that grew online
             </h2>
-            <div className="space-y-4 text-sm md:text-[15px] text-gray-600 leading-relaxed">
+            <div className="space-y-4 text-sm md:text-[15px] text-gray-900 leading-relaxed">
               <p>
                 Cloud Graphics started at Shivaji Chowk in Amravati, doing what print shops do —
                 visiting cards, banners, and the occasional rush job before a wedding. Customers
@@ -204,7 +204,7 @@ export default function About() {
 
           {/* What we print */}
           <Reveal variant="right" delay={120} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <p className="text-[11px] font-bold uppercase mb-4 text-gray-400" style={{ letterSpacing: "0.15em" }}>
+            <p className="text-[11px] font-bold uppercase mb-4 text-gray-700" style={{ letterSpacing: "0.15em" }}>
               What We Print
             </p>
             <div className="flex flex-wrap gap-2">
@@ -255,7 +255,7 @@ export default function About() {
                 </div>
                 <div>
                   <p className="text-[15px] font-bold text-gray-900 mb-1.5">{title}</p>
-                  <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+                  <p className="text-sm text-gray-800 leading-relaxed">{desc}</p>
                 </div>
               </div>
             ))}
@@ -287,7 +287,7 @@ export default function About() {
                 <Icon />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase text-gray-400 mb-1" style={{ letterSpacing: "0.1em" }}>
+                <p className="text-[11px] font-bold uppercase text-gray-700 mb-1" style={{ letterSpacing: "0.1em" }}>
                   {label}
                 </p>
                 <p className="text-sm font-semibold text-gray-800 leading-snug break-words">{value}</p>
@@ -306,7 +306,7 @@ export default function About() {
         >
           <div
             className="absolute inset-0"
-            style={{ background: "radial-gradient(circle at 50% 0%, rgba(6,114,167,0.10), transparent 62%)" }}
+            style={{ background: "radial-gradient(circle at 50% 0%, rgba(5, 97, 142,0.10), transparent 62%)" }}
           />
           <div className="relative" style={{ zIndex: 2 }}>
             <h2
@@ -315,14 +315,14 @@ export default function About() {
             >
               Got something in mind?
             </h2>
-            <p className="text-gray-600 text-sm md:text-base max-w-lg mx-auto mb-8 leading-relaxed">
+            <p className="text-gray-900 text-sm md:text-base max-w-lg mx-auto mb-8 leading-relaxed">
               Tell us what you need printed and we will come back with options, pricing and a timeline.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 to="/products"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white no-underline"
-                style={{ background: BRAND, boxShadow: "0 4px 18px rgba(6,114,167,0.28)" }}
+                style={{ background: BRAND, boxShadow: "0 4px 18px rgba(5, 97, 142,0.28)" }}
               >
                 Start Designing <IconArrow />
               </Link>

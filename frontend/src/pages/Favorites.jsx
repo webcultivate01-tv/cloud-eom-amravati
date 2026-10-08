@@ -12,7 +12,7 @@ export default function Favorites() {
   const handleClearAll = () => {
     if (!window.confirm("Remove all favourites?")) return;
     dispatch(clearFavorites());
-    toast.success("Favourites cleared");
+    toast.dismiss(); toast.success("Favourites cleared");
   };
 
   return (

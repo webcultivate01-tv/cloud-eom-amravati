@@ -18,6 +18,16 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: "User not found" });
       }
 
+      // A blocked account loses access immediately, not just at the next login.
+      // Blocking an employee is how an admin suspends them mid-shift, so an
+      // already-issued token must stop working the moment the flag is set.
+      if (req.user.isBlocked) {
+        return res.status(403).json({
+          code: "ACCOUNT_BLOCKED",
+          message: "Your account has been blocked. Contact support.",
+        });
+      }
+
       next();
     } catch (error) {
       return res.status(401).json({ message: "Not authorized, invalid token" });

@@ -55,7 +55,7 @@ const getProductById = async (req, res) => {
 const createProduct = async (req, res) => {
   try {
     const {
-      name, description, price, originalPrice,
+      name, description, price, originalPrice, deliveryCharge,
       brand, sku, category, stock,
       allowCustomImage, requiresCustomImage, allowCOD,
       weight, returnPolicy,
@@ -79,6 +79,7 @@ const createProduct = async (req, res) => {
       description,
       price,
       originalPrice: Number(originalPrice) || 0,
+      deliveryCharge: Math.max(Number(deliveryCharge) || 0, 0),
       brand: brand || "",
       sku: sku || "",
       category,
@@ -118,7 +119,7 @@ const updateProduct = async (req, res) => {
     const previousImages = [product.image, ...product.images];
 
     const {
-      name, description, price, originalPrice,
+      name, description, price, originalPrice, deliveryCharge,
       brand, sku, category, stock,
       isAvailable, allowCustomImage, requiresCustomImage, allowCOD,
       weight, returnPolicy,
@@ -135,6 +136,7 @@ const updateProduct = async (req, res) => {
     product.description        = description        ?? product.description;
     product.price              = price              ?? product.price;
     product.originalPrice      = originalPrice !== undefined ? Number(originalPrice) : product.originalPrice;
+    product.deliveryCharge     = deliveryCharge !== undefined ? Math.max(Number(deliveryCharge) || 0, 0) : product.deliveryCharge;
     product.brand              = brand              ?? product.brand;
     product.sku                = sku                ?? product.sku;
     product.category           = category           ?? product.category;

@@ -9,21 +9,21 @@ export default {
       colors: {
         /* ── Cloud Graphics brand ─────────────────────────────────────
            Sampled off the logo mark itself: the cloud gradient runs from
-           #008cd0 (bright azure, left edge) to #0f435d (deep petrol, right),
-           with #0672a7 as the dominant mid-tone. 600 is the signature
+           #008cd0 (bright azure, left edge) to #0d394f (deep petrol, right),
+           with #05618e as the dominant mid-tone. 600 is the signature
            colour; 700/800 carry buttons and their hovers. */
         brand: {
           50:  "#eff8fd",
           100: "#daeffa",
           200: "#b0def4",
           300: "#6fc3e9",
-          400: "#29a3dc",
-          500: "#0288cb",
-          600: "#0672a7",
-          700: "#0a5b82",
-          800: "#0c4a69",
-          900: "#0f435d",
-          950: "#082c3e",
+          400: "#238bbb",
+          500: "#0274ad",
+          600: "#05618e",
+          700: "#094d6f",
+          800: "#0a3f59",
+          900: "#0d394f",
+          950: "#072535",
         },
         /* Alias — keeps `primary-*` markup pointed at the brand. */
         primary: {
@@ -31,13 +31,13 @@ export default {
           100: "#daeffa",
           200: "#b0def4",
           300: "#6fc3e9",
-          400: "#29a3dc",
-          500: "#0288cb",
-          600: "#0672a7",
-          700: "#0a5b82",
-          800: "#0c4a69",
-          900: "#0f435d",
-          950: "#082c3e",
+          400: "#238bbb",
+          500: "#0274ad",
+          600: "#05618e",
+          700: "#094d6f",
+          800: "#0a3f59",
+          900: "#0d394f",
+          950: "#072535",
         },
       },
       fontFamily: {
@@ -47,8 +47,8 @@ export default {
       boxShadow: {
         card:        "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04)",
         "card-hover":"0 4px 16px -2px rgb(0 0 0 / 0.1), 0 2px 8px -2px rgb(0 0 0 / 0.06)",
-        "glow":      "0 0 0 3px rgb(6 114 167 / 0.20)",
-        "glow-sm":   "0 0 0 2px rgb(6 114 167 / 0.16)",
+        "glow":      "0 0 0 3px rgb(5 97 142 / 0.20)",
+        "glow-sm":   "0 0 0 2px rgb(5 97 142 / 0.16)",
       },
       keyframes: {
         fadeInUp: {

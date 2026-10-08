@@ -99,6 +99,10 @@ const otpBlock = (otp) => `
     </td></tr>
   </table>`;
 
+/** Delivery charges inside a total = total minus the items' own cost (0 on older orders). */
+const deliveryOf = (items, totalPrice) =>
+  Math.max(Math.round((totalPrice - (items || []).reduce((s, i) => s + i.price * i.quantity, 0)) * 100) / 100, 0);
+
 /** Line-item table shared by the order, dispatch and delivery mails. */
 const itemsTable = (items, totalPrice) => `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
@@ -115,6 +119,15 @@ const itemsTable = (items, totalPrice) => `
         <td align="center" style="padding:11px 0;font:400 14px/1.45 Arial,Helvetica,sans-serif;color:${T.muted};border-bottom:1px solid ${T.line};">${it.quantity}</td>
         <td align="right"  style="padding:11px 0;font:700 14px/1.45 Arial,Helvetica,sans-serif;color:${T.ink};border-bottom:1px solid ${T.line};">${money(it.price * it.quantity)}</td>
       </tr>`).join("")}
+    ${totalPrice !== undefined && deliveryOf(items, totalPrice) > 0 ? `
+      <tr>
+        <td colspan="2" style="padding:12px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.muted};">Product cost</td>
+        <td align="right" style="padding:12px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">${money(totalPrice - deliveryOf(items, totalPrice))}</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.muted};">Delivery charges</td>
+        <td align="right" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">${money(deliveryOf(items, totalPrice))}</td>
+      </tr>` : ""}
     ${totalPrice !== undefined ? `
       <tr>
         <td colspan="2" style="padding:14px 0 0;font:700 15px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">Total</td>
@@ -304,6 +317,7 @@ const STATUS_INFO = {
   Pending:    { eyebrow: "Order received", tone: "#b45309", tint: "#fffbeb", title: "We've got your order",         text: "It's in the queue and will move into production shortly." },
   Processing: { eyebrow: "In progress",    tone: "#0369a1", tint: "#f0f9ff", title: "Your order is being processed", text: "Our team is preparing your items and checking your artwork." },
   Printing:   { eyebrow: "On the press",   tone: "#7c3aed", tint: "#f5f3ff", title: "Your order is on the press",    text: "Printing has started. Once it's finished we'll pack it for dispatch." },
+  "Ready for Delivery": { eyebrow: "Ready", tone: "#0f766e", tint: "#f0fdfa", title: "Your order is ready for delivery", text: "Printing is done and your order is packed, waiting for pickup by our delivery partner." },
   Shipped:    { eyebrow: "Dispatched",     tone: "#0369a1", tint: "#f0f9ff", title: "Your order is on its way",      text: "It's with our courier partner and moving towards you." },
   Delivered:  { eyebrow: "Delivered",      tone: "#047857", tint: "#ecfdf5", title: "Your order has been delivered",  text: "We hope it's everything you wanted. Your tax invoice is attached to this email." },
   Cancelled:  { eyebrow: "Cancelled",      tone: "#b91c1c", tint: "#fef2f2", title: "Your order has been cancelled",  text: "If you paid online, any refund is processed back to your original payment method." },
@@ -312,7 +326,7 @@ const STATUS_INFO = {
 /* The pipeline drawn as a row of steps, so the customer sees where the
    order sits rather than just being told a word. Cancelled orders skip
    it — a progress bar makes no sense for a stopped order. */
-const STAGES = ["Pending", "Processing", "Printing", "Shipped", "Delivered"];
+const STAGES = ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped", "Delivered"];
 
 const progressTrack = (status) => {
   const at = STAGES.indexOf(status);
@@ -544,8 +558,65 @@ const sendReplacementStatusUpdate = async ({ toEmail, toName, productName, statu
   });
 };
 
+/* ══════════════════════════════════════════════════════════════
+   STAFF ACCOUNTS
+══════════════════════════════════════════════════════════════ */
+
+/**
+ * Hands a new (or reset) employee their sign-in details.
+ *
+ * The password is temporary by design: the panel will not open until they
+ * replace it, so putting it in the mail is the handover, not a standing
+ * credential. Sent on account creation and whenever an admin resets it.
+ */
+const sendEmployeeCredentials = async ({ toEmail, toName, password, employeeRole, modules = [], isReset = false }) => {
+  const roleLabel = "Manager";
+  await send({
+    to: toEmail,
+    subject: isReset
+      ? `Your ${COMPANY.name} staff password has been reset`
+      : `Your ${COMPANY.name} staff account is ready`,
+    preheader: isReset
+      ? "A new temporary password has been set for your staff account."
+      : "Sign in with the temporary password below and choose your own.",
+    eyebrow: "Staff access",
+    title: isReset ? "Your password has been reset" : `Welcome to the ${COMPANY.name} team`,
+    body: `
+      <p style="margin:0;font:400 15px/1.65 Arial,Helvetica,sans-serif;color:#475569;">
+        Hi <strong style="color:${T.ink};">${esc(toName)}</strong>, ${isReset
+          ? "an administrator has set a new temporary password on your staff account."
+          : `an administrator has created a staff account for you as <strong style="color:${T.ink};">${esc(roleLabel)}</strong>.`}
+      </p>
+
+      ${heading("Your sign-in details")}
+      ${detailRows([
+        ["Email", esc(toEmail)],
+        ["Temporary password", `<span style="font-family:'Courier New',Courier,monospace;letter-spacing:1px;">${esc(password)}</span>`],
+      ])}
+
+      ${panel({
+        tone: "#b45309", tint: "#fffbeb",
+        title: "Change it on first sign-in",
+        body: "This password is temporary. You will be asked to choose your own before the staff panel opens, and this one stops working from then on.",
+      })}
+
+      ${modules.length ? `
+        ${heading("Sections you can access")}
+        <p style="margin:0;font:400 14px/1.75 Arial,Helvetica,sans-serif;color:#475569;">
+          ${modules.map((m) => esc(m)).join(" &middot; ")}
+        </p>` : ""}
+
+      ${button("Sign in to the staff panel", `${SITE()}/login`)}
+
+      <p style="margin:0;font:400 13px/1.6 Arial,Helvetica,sans-serif;color:${T.muted};">
+        Keep these details private. If you did not expect this email, tell your administrator straight away.
+      </p>`,
+  });
+};
+
 module.exports = {
   sendCancelOTP,
+  sendEmployeeCredentials,
   sendOrderConfirmation,
   sendOrderStatusUpdate,
   sendShipmentEmail,

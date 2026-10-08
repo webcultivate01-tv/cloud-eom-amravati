@@ -27,7 +27,7 @@ const RANGES = [
    mix is the only place two hues carry identity, and that pair was
    validated for colour-vision separation against a white surface
    (worst-case ΔE 19.3 under protanopia, 32.3 normal vision). */
-const ACCENT = "#0672a7";      // brand — online / revenue
+const ACCENT = "#05618e";      // brand — online / revenue
 const ACCENT_ALT = "#eb6834";  // cash on delivery
 const GRID = "#eef2f6";        // hairline, one step off the surface
 const AXIS_INK = "#94a3b8";

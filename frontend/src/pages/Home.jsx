@@ -299,80 +299,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Events Showcase — visible on website */}
-      {events.length > 0 && (
-        <section className="bg-gradient-to-b from-brand-50/40 to-white px-4 md:px-12 py-12 md:py-16 border-y border-brand-100/60">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-10">
-              <span className="inline-block text-xs font-bold uppercase tracking-[0.3em] text-brand-700 mb-3">
-                Latest Updates
-              </span>
-              <h2 className="text-2xl md:text-4xl font-black text-gray-900 -tracking-wide mb-3"
-                  style={{ fontFamily: "'Playfair Display', serif" }}>
-                Offers & Announcements
-              </h2>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                Stay up to date with our latest offers, flash sales, and important announcements.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {events.slice(0, 6).map((ev) => {
-                const link = resolveLink(ev.link);
-                const Card = link ? (link.external ? "a" : Link) : "div";
-                const cardProps = !link
-                  ? {}
-                  : link.external
-                    ? { href: link.to, target: "_blank", rel: "noopener noreferrer" }
-                    : { to: link.to };
-                return (
-                  <Card
-                    key={ev._id}
-                    {...cardProps}
-                    className="group bg-white rounded-2xl overflow-hidden border border-brand-100/60 hover:border-brand-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col no-underline"
-                  >
-                    {ev.image ? (
-                      <div className="aspect-[16/9] overflow-hidden bg-gray-100">
-                        <img
-                          src={ev.image}
-                          alt={ev.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      </div>
-                    ) : (
-                      <div className="aspect-[16/9] bg-gradient-to-br from-brand-50 via-pink-50 to-amber-50 flex items-center justify-center">
-                        <span className="text-5xl opacity-30">📣</span>
-                      </div>
-                    )}
-                    <div className="p-5 flex flex-col flex-1">
-                      <span className="inline-flex items-center w-fit bg-brand-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider mb-3">
-                        {ev.badge || "Announcement"}
-                      </span>
-                      <h3 className="font-black text-gray-900 text-lg leading-snug mb-2 group-hover:text-brand-700 transition-colors">
-                        {ev.title}
-                      </h3>
-                      <p className="text-sm text-gray-500 leading-relaxed line-clamp-3 flex-1">
-                        {ev.description}
-                      </p>
-                      {ev.expiresAt && (
-                        <p className="text-xs text-amber-600 mt-3 flex items-center gap-1 font-semibold">
-                          ⏳ Valid till {new Date(ev.expiresAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
-                        </p>
-                      )}
-                      {ev.link && (
-                        <p className="text-brand-700 font-bold text-sm mt-3 flex items-center gap-1">
-                          Learn more <span className="group-hover:translate-x-1 transition-transform">→</span>
-                        </p>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Featured Products */}
       <section className="bg-[#f7f6f3] px-4 md:px-12 py-12 md:py-16">
         <div className="max-w-7xl mx-auto">
@@ -424,7 +350,7 @@ export default function Home() {
               <div className="w-8 h-[1px]" style={{ background: "#9cc9de" }} />
               <span
                 className="text-[11px] font-semibold uppercase tracking-[0.3em]"
-                style={{ color: "#0672a7" }}
+                style={{ color: "#05618e" }}
               >
                 How It Works
               </span>
@@ -442,7 +368,7 @@ export default function Home() {
               }}
             >
               Your Design, Delivered
-              <span style={{ color: "#0672a7" }}> In 4 Simple Steps</span>
+              <span style={{ color: "#05618e" }}> In 4 Simple Steps</span>
             </h2>
 
             <p className="mt-4 text-[15px] leading-[1.85] text-gray-500">
@@ -478,8 +404,8 @@ export default function Home() {
                     <div
                       className="w-14 h-14 rounded-2xl flex items-center justify-center text-white"
                       style={{
-                        background: "linear-gradient(135deg,#0672a7 0%,#2fa3db 100%)",
-                        boxShadow: "0 10px 24px rgba(6, 114, 167,0.22)",
+                        background: "linear-gradient(135deg,#05618e 0%,#2fa3db 100%)",
+                        boxShadow: "0 10px 24px rgba(5, 97, 142,0.22)",
                       }}
                     >
                       {item.icon}
@@ -488,7 +414,7 @@ export default function Home() {
                       className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold"
                       style={{
                         background: "#fff",
-                        color: "#0672a7",
+                        color: "#05618e",
                         border: "1px solid #dce9f1",
                       }}
                     >
@@ -517,9 +443,9 @@ export default function Home() {
               to="/products?type=customize"
               className="group inline-flex items-center gap-3 pl-6 pr-2 py-2 rounded-full text-[14px] font-semibold transition-all duration-300 hover:-translate-y-[2px]"
               style={{
-                background: "#0672a7",
+                background: "#05618e",
                 color: "#fff",
-                boxShadow: "0 12px 30px rgba(6, 114, 167,0.20)",
+                boxShadow: "0 12px 30px rgba(5, 97, 142,0.20)",
               }}
             >
               Start customizing
@@ -567,7 +493,7 @@ export default function Home() {
                 <div className="w-8 h-[1px]" style={{ background: "#9cc9de" }} />
                 <span
                   className="text-[11px] font-semibold uppercase tracking-[0.3em]"
-                  style={{ color: "#0672a7" }}
+                  style={{ color: "#05618e" }}
                 >
                   Customer Reviews
                 </span>
@@ -586,7 +512,7 @@ export default function Home() {
               >
                 Loved By Customers
                 <br />
-                <span style={{ color: "#0672a7" }}>
+                <span style={{ color: "#05618e" }}>
                   Across Amravati
                 </span>
               </h2>
@@ -650,9 +576,9 @@ export default function Home() {
                 }}
                 className="group mt-9 inline-flex items-center gap-3 pl-6 pr-2 py-2 rounded-full text-[14px] font-semibold transition-all duration-300 hover:-translate-y-[2px]"
                 style={{
-                  background: "#0672a7",
+                  background: "#05618e",
                   color: "#fff",
-                  boxShadow: "0 12px 30px rgba(6, 114, 167,0.20)",
+                  boxShadow: "0 12px 30px rgba(5, 97, 142,0.20)",
                 }}
               >
                 {showReviewForm ? "Close review form" : "Write a review"}
@@ -771,7 +697,7 @@ export default function Home() {
                             className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-[15px] shrink-0"
                             style={{
                               background:
-                                "linear-gradient(135deg,#0672a7 0%, #0f7fb8 100%)",
+                                "linear-gradient(135deg,#05618e 0%, #0f7fb8 100%)",
                             }}
                           >
                             {review.name[0].toUpperCase()}
@@ -802,7 +728,7 @@ export default function Home() {
                           className="h-[3px] rounded-full transition-all duration-300"
                           style={{
                             width: i === reviewIdx ? 26 : 10,
-                            background: i === reviewIdx ? "#0672a7" : "#d1e0e9",
+                            background: i === reviewIdx ? "#05618e" : "#d1e0e9",
                           }}
                         />
                       ))}
@@ -818,15 +744,15 @@ export default function Home() {
                         style={{
                           background: "#fbfdff",
                           border: "1px solid #d6e4ec",
-                          color: "#0672a7",
+                          color: "#05618e",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "#0672a7";
+                          e.currentTarget.style.background = "#05618e";
                           e.currentTarget.style.color = "#fff";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = "#fbfdff";
-                          e.currentTarget.style.color = "#0672a7";
+                          e.currentTarget.style.color = "#05618e";
                         }}
                       >
                         <ChevronLeft size={18} />
@@ -840,15 +766,15 @@ export default function Home() {
                         style={{
                           background: "#fbfdff",
                           border: "1px solid #d6e4ec",
-                          color: "#0672a7",
+                          color: "#05618e",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "#0672a7";
+                          e.currentTarget.style.background = "#05618e";
                           e.currentTarget.style.color = "#fff";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = "#fbfdff";
-                          e.currentTarget.style.color = "#0672a7";
+                          e.currentTarget.style.color = "#05618e";
                         }}
                       >
                         <ChevronRight size={18} />
@@ -883,7 +809,7 @@ export default function Home() {
                   className="h-[6px] w-full"
                   style={{
                     background:
-                      "linear-gradient(90deg,#0672a7 0%, #2fa3db 50%, #0672a7 100%)",
+                      "linear-gradient(90deg,#05618e 0%, #2fa3db 50%, #05618e 100%)",
                   }}
                 />
 
@@ -900,7 +826,7 @@ export default function Home() {
 
                     <span
                       className="inline-block text-[11px] font-semibold uppercase tracking-[0.3em] mb-3"
-                      style={{ color: "#0672a7" }}
+                      style={{ color: "#05618e" }}
                     >
                       Share Feedback
                     </span>
@@ -1129,9 +1055,9 @@ export default function Home() {
                           style={{
                             background: reviewLoading
                               ? "#c6d8e2"
-                              : "linear-gradient(135deg,#0672a7 0%, #2fa3db 100%)",
+                              : "linear-gradient(135deg,#05618e 0%, #2fa3db 100%)",
                             color: "#fff",
-                            boxShadow: "0 15px 35px rgba(6, 114, 167,0.22)",
+                            boxShadow: "0 15px 35px rgba(5, 97, 142,0.22)",
                           }}
                         >
 
@@ -1162,7 +1088,7 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="w-full relative overflow-hidden" style={{ background: "#082c3e" }}>
+      <section className="w-full relative overflow-hidden" style={{ background: "#072535" }}>
 
         {/* Background collage */}
         <div className="absolute inset-0 grid grid-cols-3 opacity-75">
@@ -1190,12 +1116,12 @@ export default function Home() {
               );
             })}
           </div>
-          <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#0672a7", fontFamily: "'Montserrat', sans-serif" }}>
+          <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#05618e", fontFamily: "'Montserrat', sans-serif" }}>
             500+ Happy Customers in Amravati
           </p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight mb-4" style={{ fontFamily: "'Playfair Display', serif", textShadow: "0 2px 20px rgba(0,0,0,0.5)" }}>
             Print Your Memories,<br />
-            <span style={{ color: "#0672a7" }}>Gift Something Special</span>
+            <span style={{ color: "#05618e" }}>Gift Something Special</span>
           </h2>
           <p className="text-white text-base max-w-xl mx-auto mb-8" style={{ opacity: 0.85, fontFamily: "'Montserrat', sans-serif" }}>
             Custom mugs, t-shirts, diaries & more — personalized with your photos and designs. Order today, delivered fast.
@@ -1203,7 +1129,7 @@ export default function Home() {
           <div className="flex flex-row gap-2.5 sm:gap-3 items-center justify-center">
             <Link to="/products"
               className="flex-1 sm:flex-none text-center whitespace-nowrap px-5 sm:px-8 py-3.5 rounded-full font-bold text-sm transition-all duration-200 no-underline"
-              style={{ background: "#fff", color: "#0672a7", fontFamily: "'Montserrat', sans-serif", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}
+              style={{ background: "#fff", color: "#05618e", fontFamily: "'Montserrat', sans-serif", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}
               onMouseOver={e => e.currentTarget.style.background = "#eff8fd"}
               onMouseOut={e => e.currentTarget.style.background = "#fff"}
             >

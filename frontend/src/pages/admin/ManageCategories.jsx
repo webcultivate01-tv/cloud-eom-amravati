@@ -69,6 +69,13 @@ export default function ManageCategories() {
     await dispatch(updateCategory({ id: cat._id, payload: { isActive: !cat.isActive } }));
   };
 
+  const handleToggleNavbar = async (cat) => {
+    const next = cat.showInNavbar === false;
+    const result = await dispatch(updateCategory({ id: cat._id, payload: { showInNavbar: next } }));
+    if (result.error) toast.error(result.payload);
+    else toast.success(next ? `"${cat.name}" now shows in the navbar` : `"${cat.name}" removed from the navbar`);
+  };
+
   const handleAddSub = async (catId) => {
     const name = (subInputs[catId] || "").trim();
     if (!name) return;
@@ -102,7 +109,9 @@ export default function ManageCategories() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">Manage Categories</h1>
-          <p className="text-slate-400 text-sm mt-0.5">{categories.length} categories configured</p>
+          <p className="text-slate-400 text-sm mt-0.5">
+            {categories.length} categories configured · {categories.filter((c) => c.isActive && c.showInNavbar !== false).length} shown in the website navbar
+          </p>
         </div>
         <button
           onClick={() => { resetForm(); setShowForm((v) => !v); }}
@@ -258,6 +267,17 @@ export default function ManageCategories() {
                       onClick={() => handleEdit(cat)}
                       className="admin-btn bg-brand-50 hover:bg-brand-100 text-brand-700 !py-1.5 !px-3 !text-xs"
                     >✏️ Edit</button>
+                    <button
+                      onClick={() => handleToggleNavbar(cat)}
+                      title="Show or hide this category in the website's top navigation bar"
+                      className={`admin-btn !py-1.5 !px-3 !text-xs ${
+                        cat.showInNavbar !== false
+                          ? "bg-sky-50 hover:bg-sky-100 text-sky-700"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {cat.showInNavbar !== false ? "🧭 In Navbar" : "➖ Not in Navbar"}
+                    </button>
                     <button
                       onClick={() => handleToggleActive(cat)}
                       className={`admin-btn !py-1.5 !px-3 !text-xs ${

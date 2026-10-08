@@ -9,6 +9,8 @@ const orderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 },
+  // Delivery charge per unit, frozen at order time (like price)
+  deliveryCharge: { type: Number, default: 0, min: 0 },
   size: { type: String, default: "" },
   uploadedImage: { type: String, default: "" },
 });
@@ -42,6 +44,13 @@ const orderSchema = new mongoose.Schema(
       addressType: { type: String, enum: ["Home", "Work", "Other"], default: "Home" },
     },
 
+    // Product cost (sum of price × qty) and delivery charges, kept separately
+    // so the bill can itemise them. totalPrice is always itemsTotal +
+    // deliveryCharge — the amount actually charged. Orders placed before
+    // delivery charges existed have neither field; they read as 0 delivery.
+    itemsTotal:     { type: Number, default: 0, min: 0 },
+    deliveryCharge: { type: Number, default: 0, min: 0 },
+
     totalPrice: {
       type: Number,
       required: true,
@@ -50,7 +59,7 @@ const orderSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "Processing", "Printing", "Shipped", "Delivered", "Cancelled"],
+      enum: ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped", "Delivered", "Cancelled"],
       default: "Pending",
     },
 

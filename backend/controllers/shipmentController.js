@@ -1,6 +1,7 @@
 const axios = require("axios");
 const Order = require("../models/Order");
 const { sendShipmentEmail } = require("../config/mailer");
+const { hasModule } = require("../middleware/adminMiddleware");
 
 const SHIPROCKET_BASE = "https://apiv2.shiprocket.in/v1/external";
 
@@ -302,7 +303,7 @@ const getShipmentInfo = async (req, res) => {
       .select("shipment status shippingAddress user");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    if (order.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    if (order.user.toString() !== req.user._id.toString() && !hasModule(req.user, "orders")) {
       return res.status(403).json({ message: "Not authorized" });
     }
 

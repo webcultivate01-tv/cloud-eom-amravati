@@ -5,6 +5,7 @@ const Product = require("../models/Product");
 const User = require("../models/User");
 const { sendOrderConfirmation } = require("../config/mailer");
 const { nextOrderNumber } = require("../models/Counter");
+const { computeOrderTotals } = require("../config/orderTotals");
 const { ensureInvoiceNumber, isBillable } = require("./invoiceController");
 const { renderInvoiceBuffer, invoiceFileName } = require("../config/invoice");
 
@@ -69,7 +70,6 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
     }
 
     // 2. Build order items with fresh prices from DB
-    let totalPrice = 0;
     const orderItems = [];
 
     for (const item of items) {
@@ -85,11 +85,11 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
         }
       }
 
-      totalPrice += product.price * item.quantity;
       orderItems.push({
         product: product._id,
         name: product.name,
         price: product.price,
+        deliveryCharge: product.deliveryCharge || 0,
         quantity: item.quantity,
         size: item.size || "",
         uploadedImage: item.uploadedImage || "",
@@ -102,7 +102,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       orderNumber: await nextOrderNumber(),
       items: orderItems,
       shippingAddress,
-      totalPrice,
+      ...computeOrderTotals(orderItems),
       customerNote: customerNote || "",
       paymentMethod: "razorpay",
       paymentStatus: "paid",

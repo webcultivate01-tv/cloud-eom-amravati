@@ -10,6 +10,26 @@ const generateToken = (id) => {
   });
 };
 
+/**
+ * The session payload the frontend stores and routes on.
+ *
+ * Built in one place so login, profile fetch and profile save can never
+ * disagree about which panel a user belongs to or what they may open.
+ * `permissions` is what the employee sidebar and route guards read — the
+ * server still re-checks every request, so this is for the UI, not security.
+ */
+const sessionPayload = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  adminRole: user.adminRole,
+  employeeRole: user.employeeRole,
+  permissions: user.role === "employee" ? user.permissions || [] : [],
+  mustChangePassword: !!user.mustChangePassword,
+});
+
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -27,10 +47,7 @@ const register = async (req, res) => {
     const user = await User.create({ name, email, password, phone });
 
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
+      ...sessionPayload(user),
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -63,11 +80,7 @@ const login = async (req, res) => {
     }
 
     res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      adminRole: user.adminRole,
+      ...sessionPayload(user),
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -79,13 +92,7 @@ const login = async (req, res) => {
 // @route   GET /api/auth/profile
 // @access  Private
 const getProfile = async (req, res) => {
-  res.json({
-    _id: req.user._id,
-    name: req.user.name,
-    email: req.user.email,
-    phone: req.user.phone,
-    role: req.user.role,
-  });
+  res.json(sessionPayload(req.user));
 };
 
 // @desc    Update logged-in user's profile (name, phone, password)
@@ -114,18 +121,14 @@ const updateProfile = async (req, res) => {
         return res.status(400).json({ message: "New password must be at least 6 characters" });
       }
       user.password = newPassword;
+      // Setting their own password is what retires the temporary one the
+      // admin handed over, and what opens the employee panel.
+      user.mustChangePassword = false;
     }
 
     await user.save();
 
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      adminRole: user.adminRole,
-    });
+    res.json(sessionPayload(user));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

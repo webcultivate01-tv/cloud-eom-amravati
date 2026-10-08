@@ -4,6 +4,7 @@ const {
   renderInvoice, renderInvoiceBuffer, buildInvoiceModel,
   formatInvoiceNumber, financialYear, invoiceFileName,
 } = require("../config/invoice");
+const { hasModule } = require("../middleware/adminMiddleware");
 
 /**
  * Return the order's invoice number, issuing one if it has none.
@@ -19,7 +20,7 @@ const {
 const ensureInvoiceNumber = async (order) => {
   if (order.invoice?.number) return order;
 
-  const issuedAt = order.deliveredAt || order.paidAt || new Date();
+  const issuedAt = order.deliveredAt || order.paidAt || order.createdAt || new Date();
   const seq = await nextSequence(`invoice:${financialYear(issuedAt)}`);
   const number = formatInvoiceNumber(seq, issuedAt);
 
@@ -70,17 +71,17 @@ const downloadInvoice = async (req, res) => {
     const order = await loadBillableOrder(req.params.orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const isAdmin = req.user.role === "admin";
+    const isStaffViewer = hasModule(req.user, "orders");
     const isOwner = order.user?._id?.toString() === req.user._id.toString();
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isStaffViewer) {
       return res.status(403).json({ message: "Not authorised to view this invoice" });
     }
 
-    if (!(isAdmin ? isAdminBillable(order) : isBillable(order))) {
+    // The bill is handed over as soon as the order is placed, so customers
+    // are held to the same rule as admins: anything not cancelled is billable.
+    if (!isAdminBillable(order)) {
       return res.status(400).json({
-        message: order.status === "Cancelled"
-          ? "This order was cancelled, so no tax invoice is available for it."
-          : "A tax invoice is available once the payment for this order is settled.",
+        message: "This order was cancelled, so no bill is available for it.",
       });
     }
 
@@ -102,13 +103,13 @@ const previewInvoice = async (req, res) => {
     const order = await loadBillableOrder(req.params.orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const isAdmin = req.user.role === "admin";
+    const isStaffViewer = hasModule(req.user, "orders");
     const isOwner = order.user?._id?.toString() === req.user._id.toString();
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isStaffViewer) {
       return res.status(403).json({ message: "Not authorised to view this invoice" });
     }
-    if (!(isAdmin ? isAdminBillable(order) : isBillable(order))) {
-      return res.status(400).json({ message: "No tax invoice is available for this order yet." });
+    if (!isAdminBillable(order)) {
+      return res.status(400).json({ message: "No bill is available for a cancelled order." });
     }
 
     await ensureInvoiceNumber(order);
