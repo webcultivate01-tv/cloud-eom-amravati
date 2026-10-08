@@ -116,6 +116,13 @@ const num = (n) => (Number.isFinite(n) ? n : 0);
 export const selectCartTotal = (state) =>
   state.cart.items.reduce((sum, item) => sum + num(item.price) * num(item.quantity), 0);
 
+// Delivery is charged per unit, set per product by the admin (0 = free).
+export const selectCartDelivery = (state) =>
+  state.cart.items.reduce((sum, item) => sum + num(item.deliveryCharge) * num(item.quantity), 0);
+
+// What the customer actually pays: product cost + delivery.
+export const selectCartGrandTotal = (state) => selectCartTotal(state) + selectCartDelivery(state);
+
 export const selectCartCount = (state) =>
   state.cart.items.reduce((sum, item) => sum + num(item.quantity), 0);
 

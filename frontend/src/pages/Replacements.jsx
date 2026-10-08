@@ -57,18 +57,18 @@ function TimelineBar({ status }) {
                 width: "24px", height: "24px", borderRadius: "50%", border: "2px solid",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "0.62rem", fontWeight: "700",
-                background: reject ? "#ffebee" : done ? "#0672a7" : "#f0f0f0",
-                borderColor: reject ? "#e53935" : done ? "#0672a7" : "#d0d0d0",
+                background: reject ? "#ffebee" : done ? "#05618e" : "#f0f0f0",
+                borderColor: reject ? "#e53935" : done ? "#05618e" : "#d0d0d0",
                 color: done ? "#fff" : reject ? "#e53935" : "#999",
               }}>
                 {reject ? "✕" : done ? "✓" : idx + 1}
               </div>
-              <span style={{ fontSize: "0.65rem", color: current ? "#0672a7" : reject ? "#e53935" : "#999", fontWeight: current ? "700" : "400", marginTop: "4px", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: "0.65rem", color: current ? "#05618e" : reject ? "#e53935" : "#999", fontWeight: current ? "700" : "400", marginTop: "4px", whiteSpace: "nowrap" }}>
                 {reject ? "Rejected" : step.charAt(0).toUpperCase() + step.slice(1)}
               </span>
             </div>
             {idx < TIMELINE.length - 1 && (
-              <div style={{ flex: 1, height: "2px", background: !isRejected && idx < activeIdx ? "#0672a7" : "#e0e0e0", margin: "0 2px 18px" }} />
+              <div style={{ flex: 1, height: "2px", background: !isRejected && idx < activeIdx ? "#05618e" : "#e0e0e0", margin: "0 2px 18px" }} />
             )}
           </div>
         );
@@ -442,7 +442,7 @@ const s = {
   pageHeader:  { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px", gap: "12px", flexWrap: "wrap" },
   pageTitle:   { fontSize: "1.6rem", fontWeight: "800", color: "#1a1a1a", margin: "0 0 6px" },
   pageSubtitle:{ color: "#888", fontSize: "0.88rem", lineHeight: "1.5", margin: 0 },
-  toggleBtn:       { background: "#0672a7", color: "#fff", border: "none", borderRadius: "8px", padding: "11px 22px", fontSize: "0.9rem", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
+  toggleBtn:       { background: "#05618e", color: "#fff", border: "none", borderRadius: "8px", padding: "11px 22px", fontSize: "0.9rem", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
   toggleBtnCancel: { background: "#e0e0e0", color: "#555" },
 
   // Form card
@@ -463,11 +463,11 @@ const s = {
   previewItem:   { position: "relative", width: "84px", height: "84px", borderRadius: "8px", overflow: "hidden", border: "1px solid #e0e0e0" },
   previewImg:    { width: "100%", height: "100%", objectFit: "cover" },
   previewOverlay:{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.75)", display: "flex", alignItems: "center", justifyContent: "center" },
-  spinner:       { width: "22px", height: "22px", border: "3px solid #e0e0e0", borderTopColor: "#0672a7", borderRadius: "50%" },
+  spinner:       { width: "22px", height: "22px", border: "3px solid #e0e0e0", borderTopColor: "#05618e", borderRadius: "50%" },
   removeImgBtn:  { position: "absolute", top: "3px", right: "3px", background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: "18px", height: "18px", fontSize: "0.6rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
   uploadedTick:  { position: "absolute", bottom: "3px", right: "3px", background: "#2e7d32", color: "#fff", borderRadius: "50%", width: "16px", height: "16px", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700" },
-  uploadBtn:     { border: "2px dashed #0672a7", background: "#eff8fd", color: "#0672a7", borderRadius: "8px", padding: "9px 18px", cursor: "pointer", fontSize: "0.85rem", fontWeight: "600" },
-  submitBtn:     { background: "#0672a7", color: "#fff", border: "none", borderRadius: "8px", padding: "13px 36px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" },
+  uploadBtn:     { border: "2px dashed #05618e", background: "#eff8fd", color: "#05618e", borderRadius: "8px", padding: "9px 18px", cursor: "pointer", fontSize: "0.85rem", fontWeight: "600" },
+  submitBtn:     { background: "#05618e", color: "#fff", border: "none", borderRadius: "8px", padding: "13px 36px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer" },
 
   // Empty state
   emptyBox:    { background: "#fff", borderRadius: "14px", border: "1px solid #e0e0e0", padding: "48px 32px", textAlign: "center" },

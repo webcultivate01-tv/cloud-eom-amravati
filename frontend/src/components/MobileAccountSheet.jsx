@@ -11,8 +11,9 @@ import api from "../utils/api";
 import { logout } from "../features/auth/authSlice";
 import { clearCart, selectCartCount } from "../features/cart/cartSlice";
 import { selectFavoriteCount } from "../features/favorites/favoritesSlice";
+import { usePanel, EMPLOYEE_ROLE_LABELS } from "../utils/panel";
 
-const BRAND = "#0672a7";
+const BRAND = "#05618e";
 
 /* Kept in step with .cg-sheet-out / .cg-overlay-out in index.css */
 const EXIT_MS = 300;
@@ -27,7 +28,7 @@ function Row({ to, icon: Icon, label, hint, onClose, danger }) {
     >
       <span
         className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-        style={{ background: danger ? "rgba(6, 114, 167,0.08)" : "#F5F5F4", color: danger ? BRAND : "#475569" }}
+        style={{ background: danger ? "rgba(5, 97, 142,0.08)" : "#F5F5F4", color: danger ? BRAND : "#475569" }}
       >
         <Icon size={17} strokeWidth={2} />
       </span>
@@ -51,8 +52,8 @@ function Stat({ value, label }) {
 
 /*
  * Mobile-only account sheet, opened from the bottom tab bar.
- * Shows the signed-in user's full account details plus every account link, so an
- * admin lands on their panel instead of only the profile/password form.
+ * Shows the signed-in user's full account details plus every account link, so
+ * staff land on their panel instead of only the profile/password form.
  * Desktop is untouched — the bottom bar that renders this is lg:hidden.
  */
 export default function MobileAccountSheet({ open, onClose }) {
@@ -78,6 +79,12 @@ export default function MobileAccountSheet({ open, onClose }) {
   }, [open]);
 
   const isAdmin = user?.role === "admin";
+  const isEmployee = user?.role === "employee";
+
+  /* The first few sections this employee holds, in sidebar order — the sheet is
+     a shortcut, not a second copy of the whole sidebar. */
+  const { sections } = usePanel();
+  const staffLinks = sections.flatMap((s) => s.items).slice(0, 4);
 
   /* Pull the complete profile + order count each time the sheet opens.
      Login only returns _id/name/email/role, so phone comes from here. */
@@ -154,19 +161,22 @@ export default function MobileAccountSheet({ open, onClose }) {
           <div className="px-4 pt-3 pb-4 flex items-center gap-3.5">
             <div
               className="w-14 h-14 rounded-full text-white flex items-center justify-center shrink-0 text-xl font-black"
-              style={{ background: "linear-gradient(135deg,#0672a7,#0c4a69)", boxShadow: "0 6px 18px rgba(6, 114, 167,0.28)" }}
+              style={{ background: "linear-gradient(135deg,#05618e,#0a3f59)", boxShadow: "0 6px 18px rgba(5, 97, 142,0.28)" }}
             >
               {profile.name?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-[16px] font-black text-slate-900 m-0 truncate">{profile.name}</h2>
-                {isAdmin && (
+                {(isAdmin || isEmployee) && (
                   <span
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
-                    style={{ background: "rgba(6, 114, 167,0.09)", color: BRAND }}
+                    style={{ background: "rgba(5, 97, 142,0.09)", color: BRAND }}
                   >
-                    <ShieldCheck size={10} /> {profile.adminRole || "Admin"}
+                    <ShieldCheck size={10} />{" "}
+                    {isAdmin
+                      ? profile.adminRole || "Admin"
+                      : EMPLOYEE_ROLE_LABELS[profile.employeeRole] || "Staff"}
                   </span>
                 )}
               </div>
@@ -202,6 +212,30 @@ export default function MobileAccountSheet({ open, onClose }) {
                 <Row to="/admin/orders" icon={Package} label="Manage Orders" onClose={onClose} />
                 <Row to="/admin/products" icon={Boxes} label="Manage Products" onClose={onClose} />
                 <Row to="/admin/users" icon={Users} label="Manage Users" onClose={onClose} />
+              </div>
+            </>
+          )}
+
+          {/* Staff shortcuts — the sections this employee was granted */}
+          {isEmployee && (
+            <>
+              <p className="px-4 pb-1.5 m-0 text-[10px] font-black uppercase tracking-widest text-slate-400">Staff</p>
+              <div className="mx-4 mb-4 rounded-2xl border border-slate-100 overflow-hidden">
+                {staffLinks.length === 0 ? (
+                  <Row to="/employee/no-access" icon={LayoutDashboard} label="Staff Panel" hint="No sections assigned yet" onClose={onClose} danger />
+                ) : (
+                  staffLinks.map(({ to, label, icon }, i) => (
+                    <Row
+                      key={to}
+                      to={to}
+                      icon={icon}
+                      label={label}
+                      hint={i === 0 ? "Your staff panel" : undefined}
+                      onClose={onClose}
+                      danger={i === 0}
+                    />
+                  ))
+                )}
               </div>
             </>
           )}

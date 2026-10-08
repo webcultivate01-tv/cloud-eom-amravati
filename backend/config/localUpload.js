@@ -10,6 +10,7 @@ const ALLOWED_FOLDERS = [
   "products",
   "categories",
   "events",
+  "hero",
   "orders",
   "replacements",
   "reviews",

@@ -6,49 +6,10 @@ import { logout } from "../features/auth/authSlice";
 import { clearCart } from "../features/cart/cartSlice";
 import { fetchPendingCount } from "../features/inquiry/inquirySlice";
 import { toast } from "react-toastify";
-import {
-  LayoutDashboard, Package, ShoppingCart, Users, ShieldCheck,
-  CalendarDays, Tag, Mail, Star, RefreshCw, Download, Bell,
-  Home, LogOut, Menu, X, ChevronRight, CreditCard, BarChart3,
-} from "lucide-react";
+import { Bell, Home, LogOut, Menu, X, ChevronRight } from "lucide-react";
+import { usePanel } from "../utils/panel";
 import logoMark from "../assets/logo-mark.png";
 import logoFull from "../assets/logo.png";
-
-const NAV_SECTIONS = [
-  {
-    label: "Overview",
-    items: [
-      { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { to: "/admin/orders",    icon: ShoppingCart,    label: "Orders", orderBadge: true },
-      { to: "/admin/payments",  icon: CreditCard,      label: "Payments" },
-    ],
-  },
-  {
-    label: "Catalog",
-    items: [
-      { to: "/admin/products",   icon: Package,      label: "Products" },
-      { to: "/admin/categories", icon: Tag,          label: "Categories" },
-      { to: "/admin/events",     icon: CalendarDays, label: "Events" },
-    ],
-  },
-  {
-    label: "Customers",
-    items: [
-      { to: "/admin/users",        icon: Users,     label: "Users" },
-      { to: "/admin/inquiries",    icon: Mail,      label: "Enquiries", badge: true },
-      { to: "/admin/reviews",      icon: Star,      label: "Reviews" },
-      { to: "/admin/replacements", icon: RefreshCw, label: "Replacements" },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { to: "/admin/reports", icon: BarChart3,  label: "Reports" },
-      { to: "/admin/admins",  icon: ShieldCheck, label: "Admin Management" },
-      { to: "/admin/export",  icon: Download,    label: "Data Export" },
-    ],
-  },
-];
 
 /* "2 minutes ago", "22 hours ago" — falls back to the date after a week */
 const timeAgo = (date) => {
@@ -63,31 +24,79 @@ const timeAgo = (date) => {
   return new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
+/**
+ * The back-office shell — sidebar, topbar and notification bell.
+ *
+ * One layout serves both panels. The navigation comes from usePanel(), which
+ * prunes it to the modules the signed-in account holds, so an employee sees
+ * the same chrome as an admin with only their own sections in it.
+ */
 export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [bellOpen, setBellOpen] = useState(false);
   const [pendingOrders, setPendingOrders] = useState(0);
   const [recentOrders, setRecentOrders] = useState([]);
+  const [recentInquiries, setRecentInquiries] = useState([]);
   const [, setTick] = useState(0);
   const bellRef    = useRef(null);
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
   const location   = useLocation();
-  const { user }   = useSelector((s) => s.auth);
   const { pendingCount } = useSelector((s) => s.inquiry);
+  const { user, base, sections, badge, title, can } = usePanel();
+
+  /* Both badge feeds are behind their own module, so they are only polled for
+     an account that holds it — otherwise every tick would be a 403. */
+  const canSeeInquiries = can("inquiries");
+  const canSeeOrders    = can("orders");
 
   useEffect(() => {
+    if (!canSeeInquiries) return;
     dispatch(fetchPendingCount());
-    const id = setInterval(() => dispatch(fetchPendingCount()), 60_000);
+    const id = setInterval(() => dispatch(fetchPendingCount()), 30_000);
     return () => clearInterval(id);
-  }, [dispatch]);
+  }, [dispatch, canSeeInquiries]);
+
+  /* Latest pending enquiries for the bell list. Refetched whenever the pending
+     count changes (new enquiry in, or one replied to / deleted). */
+  useEffect(() => {
+    if (!canSeeInquiries) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get("/inquiry");
+        if (cancelled) return;
+        setRecentInquiries(
+          (Array.isArray(data) ? data : [])
+            .filter((q) => q.status === "pending")
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        );
+      } catch { /* bell list is non-critical */ }
+    })();
+    return () => { cancelled = true; };
+  }, [pendingCount, canSeeInquiries]);
+
+  /* Enquiries the admin has already clicked in the bell. Kept per browser —
+     once opened they drop out of the bell and the badge. */
+  const [seenInquiries, setSeenInquiries] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("cg_seen_inquiries") || "[]"); } catch { return []; }
+  });
+  const unseenInquiries = recentInquiries.filter((q) => !seenInquiries.includes(q._id));
+  const openInquiry = (id) => {
+    const next = [...seenInquiries, id].slice(-200);
+    setSeenInquiries(next);
+    try { localStorage.setItem("cg_seen_inquiries", JSON.stringify(next)); } catch { /* ignore */ }
+    setBellOpen(false);
+    navigate(`${base}/inquiries?inquiry=${id}`);
+  };
 
   /* New orders = placed since this admin last opened the Orders page. Opening
      that page marks them seen on the server (so it holds across devices), and
      the badge + notifications clear. Otherwise poll for fresh ones. */
   useEffect(() => {
+    if (!canSeeOrders) return;
     let cancelled = false;
-    const onOrdersPage = location.pathname.startsWith("/admin/orders");
+    const onOrdersPage = location.pathname.startsWith(`${base}/orders`);
     const load = async (markSeen) => {
       try {
         if (markSeen) {
@@ -104,7 +113,7 @@ export default function AdminLayout({ children }) {
     load(onOrdersPage);
     const id = setInterval(() => load(false), 30_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [location.pathname]);
+  }, [location.pathname, base, canSeeOrders]);
 
   /* Keep the "x minutes ago" labels moving while the page sits open */
   useEffect(() => {
@@ -119,7 +128,7 @@ export default function AdminLayout({ children }) {
     return () => document.removeEventListener("mousedown", close);
   }, [bellOpen]);
 
-  const bellCount = pendingOrders + pendingCount;
+  const bellCount = pendingOrders + unseenInquiries.length;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -131,7 +140,7 @@ export default function AdminLayout({ children }) {
   const initials = user?.name?.[0]?.toUpperCase() ?? "A";
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="admin-shell flex min-h-screen bg-slate-50">
       {/* ── Sidebar ─────────────────────────────────────── */}
       <aside
         className="admin-sidebar flex flex-col sticky top-0 h-screen shrink-0 overflow-hidden z-20"
@@ -182,7 +191,7 @@ export default function AdminLayout({ children }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5 overflow-y-auto scrollbar-hide">
-          {NAV_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.label} className="mb-1">
               {sidebarOpen && (
                 <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 select-none">
@@ -192,9 +201,9 @@ export default function AdminLayout({ children }) {
               {!sidebarOpen && (
                 <div className="my-2 mx-3 h-px bg-slate-100" />
               )}
-              {section.items.map(({ to, icon: Icon, label, badge: inquiryBadge, orderBadge }) => {
+              {section.items.map(({ to, icon: Icon, label, inquiryBadge, orderBadge }) => {
                 const badge = inquiryBadge || orderBadge;
-                const count = orderBadge ? pendingOrders : pendingCount;
+                const count = orderBadge ? pendingOrders : unseenInquiries.length;
                 const badgeBg = orderBadge ? "bg-red-500" : "bg-brand-500";
                 return (
                 <NavLink
@@ -284,7 +293,7 @@ export default function AdminLayout({ children }) {
               <span className="text-slate-500 text-xs font-medium hidden sm:block">Live</span>
             </div>
             <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-            <span className="text-slate-700 font-semibold text-sm hidden sm:block">{user?.adminRole === "superAdmin" ? "Admin Panel" : "Sub Admin Panel"}</span>
+            <span className="text-slate-700 font-semibold text-sm hidden sm:block">{title}</span>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -309,22 +318,40 @@ export default function AdminLayout({ children }) {
                                 rounded-2xl shadow-xl z-30 overflow-hidden">
                   <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                     <p className="text-slate-900 font-bold text-sm m-0">Notifications</p>
-                    {pendingOrders > 0 && (
+                    {bellCount > 0 && (
                       <span className="bg-red-50 text-red-600 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                        {pendingOrders} new
+                        {bellCount} new
                       </span>
                     )}
                   </div>
 
                   <div className="max-h-[360px] overflow-y-auto">
-                    {recentOrders.length === 0 ? (
-                      <p className="text-slate-400 text-[13px] text-center py-8 m-0">No new orders</p>
-                    ) : recentOrders.map((o) => {
+                    {recentOrders.length === 0 && unseenInquiries.length === 0 && (
+                      <p className="text-slate-400 text-[13px] text-center py-8 m-0">No new notifications</p>
+                    )}
+                    {unseenInquiries.slice(0, 5).map((q) => (
+                      <button
+                        key={q._id}
+                        onClick={() => openInquiry(q._id)}
+                        className="w-full text-left flex gap-3 px-4 py-3 border-none border-b border-slate-50 bg-white
+                                   hover:bg-slate-50 cursor-pointer transition-colors"
+                      >
+                        <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-red-500" />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-slate-800 text-[13px] font-bold leading-tight">New enquiry</span>
+                          <span className="block text-slate-500 text-[12px] mt-0.5 truncate">
+                            {q.name} · {q.subject}
+                          </span>
+                          <span className="block text-slate-400 text-[11px] font-semibold mt-1">{timeAgo(q.createdAt)}</span>
+                        </span>
+                      </button>
+                    ))}
+                    {recentOrders.map((o) => {
                       const isNew = true; // the bell only lists unseen orders
                       return (
                         <button
                           key={o._id}
-                          onClick={() => { setBellOpen(false); navigate(`/admin/orders?order=${o._id}`); }}
+                          onClick={() => { setBellOpen(false); navigate(`${base}/orders?order=${o._id}`); }}
                           className="w-full text-left flex gap-3 px-4 py-3 border-none border-b border-slate-50 bg-white
                                      hover:bg-slate-50 cursor-pointer transition-colors"
                         >
@@ -345,12 +372,14 @@ export default function AdminLayout({ children }) {
                   </div>
 
                   <div className="flex border-t border-slate-100 text-[12px] font-bold">
-                    <NavLink to="/admin/orders" onClick={() => setBellOpen(false)}
-                      className="flex-1 text-center py-3 text-brand-700 no-underline hover:bg-slate-50">
-                      View all orders
-                    </NavLink>
-                    {pendingCount > 0 && (
-                      <NavLink to="/admin/inquiries" onClick={() => setBellOpen(false)}
+                    {canSeeOrders && (
+                      <NavLink to={`${base}/orders`} onClick={() => setBellOpen(false)}
+                        className="flex-1 text-center py-3 text-brand-700 no-underline hover:bg-slate-50">
+                        View all orders
+                      </NavLink>
+                    )}
+                    {canSeeInquiries && pendingCount > 0 && (
+                      <NavLink to={`${base}/inquiries`} onClick={() => setBellOpen(false)}
                         className="flex-1 text-center py-3 text-slate-600 no-underline border-l border-slate-100 hover:bg-slate-50">
                         {pendingCount} pending enquir{pendingCount === 1 ? "y" : "ies"}
                       </NavLink>
@@ -371,11 +400,13 @@ export default function AdminLayout({ children }) {
               {initials}
             </div>
             <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide ${
-              user?.adminRole === "superAdmin"
-                ? "bg-amber-100 text-amber-700"
-                : "bg-brand-100 text-brand-700"
+              user?.role === "admin"
+                ? user.adminRole === "superAdmin"
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-brand-100 text-brand-700"
+                : "bg-emerald-100 text-emerald-700"
             }`}>
-              {user?.adminRole === "superAdmin" ? "SUPER" : "ADMIN"}
+              {badge}
             </span>
           </div>
         </header>

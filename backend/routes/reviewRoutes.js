@@ -8,10 +8,10 @@ const {
   deleteReview,
 } = require("../controllers/reviewController");
 const { protect } = require("../middleware/authMiddleware");
-const { adminOnly } = require("../middleware/adminMiddleware");
+const { requireModule } = require("../middleware/adminMiddleware");
 
 // Admin: all reviews — must be defined before /:id routes
-router.get("/admin", protect, adminOnly, getAllReviews);
+router.get("/admin", protect, requireModule("reviews"), getAllReviews);
 
 // Public: submit review
 router.post("/", createReview);
@@ -20,9 +20,9 @@ router.post("/", createReview);
 router.get("/", getApprovedReviews);
 
 // Admin: approve
-router.patch("/:id/approve", protect, adminOnly, approveReview);
+router.patch("/:id/approve", protect, requireModule("reviews"), approveReview);
 
 // Admin: delete
-router.delete("/:id", protect, adminOnly, deleteReview);
+router.delete("/:id", protect, requireModule("reviews"), deleteReview);
 
 module.exports = router;

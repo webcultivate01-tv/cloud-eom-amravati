@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDashboardStats } from "../../features/orders/orderSlice";
 import { fetchPaymentStats } from "../../features/payment/paymentSlice";
+import { usePanel } from "../../utils/panel";
 import { Link } from "react-router-dom";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -18,6 +19,7 @@ const STATUS_META = {
   Pending:    { color: "#f59e0b", bg: "bg-amber-100",   text: "text-amber-700",   dot: "bg-amber-400" },
   Processing: { color: "#3b82f6", bg: "bg-blue-100",    text: "text-blue-700",    dot: "bg-blue-400" },
   Printing:   { color: "#8b5cf6", bg: "bg-violet-100",  text: "text-violet-700",  dot: "bg-violet-400" },
+  "Ready for Delivery": { color: "#14b8a6", bg: "bg-teal-100", text: "text-teal-700", dot: "bg-teal-400" },
   Shipped:    { color: "#06b6d4", bg: "bg-cyan-100",    text: "text-cyan-700",    dot: "bg-cyan-400" },
   Delivered:  { color: "#10b981", bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-400" },
   Cancelled:  { color: "#ef4444", bg: "bg-red-100",     text: "text-red-600",     dot: "bg-red-400" },
@@ -64,12 +66,15 @@ const KPI_DEFS = [
   },
 ];
 
-/* ── Quick actions ──────────────────────────────────── */
+/* ── Quick actions ──────────────────────────────────────
+   Keyed by module rather than by path: the link is built from whichever panel
+   is rendering the dashboard, and a card an employee cannot open is dropped
+   instead of leading them into a redirect. */
 const QUICK_ACTIONS = [
-  { to: "/admin/products",   label: "Manage Products",  icon: Package,      desc: "Add, edit, delete",   iconBg: "bg-brand-50",  iconColor: "text-brand-600" },
-  { to: "/admin/orders",     label: "Manage Orders",    icon: ShoppingCart, desc: "Update & ship orders", iconBg: "bg-violet-50",  iconColor: "text-violet-600" },
-  { to: "/admin/categories", label: "Categories",       icon: Tag,          desc: "Organise catalog",     iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-  { to: "/admin/users",      label: "Manage Users",     icon: Users,        desc: "Block & manage",       iconBg: "bg-amber-50",   iconColor: "text-amber-600" },
+  { module: "products",   label: "Manage Products",  icon: Package,      desc: "Add, edit, delete",    iconBg: "bg-brand-50",   iconColor: "text-brand-600" },
+  { module: "orders",     label: "Manage Orders",    icon: ShoppingCart, desc: "Update & ship orders", iconBg: "bg-violet-50",  iconColor: "text-violet-600" },
+  { module: "categories", label: "Categories",       icon: Tag,          desc: "Organise catalog",     iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+  { module: "users",      label: "Manage Users",     icon: Users,        desc: "Block & manage",       iconBg: "bg-amber-50",   iconColor: "text-amber-600" },
 ];
 
 /* ── Helpers ────────────────────────────────────────── */
@@ -146,12 +151,18 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const { stats, loading } = useSelector((s) => s.orders);
   const { stats: payStats } = useSelector((s) => s.payment);
-  const { user } = useSelector((s) => s.auth);
+  const { user, base, can } = usePanel();
 
   useEffect(() => {
     dispatch(fetchDashboardStats());
     dispatch(fetchPaymentStats());
   }, [dispatch]);
+
+  /* Only the cards this account can actually open, linked into its own panel. */
+  const quickActions = useMemo(
+    () => QUICK_ACTIONS.filter((a) => can(a.module)).map((a) => ({ ...a, to: `${base}/${a.module}` })),
+    [base, can]
+  );
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -168,20 +179,20 @@ export default function Dashboard() {
 
   const revenuePieData = payStats
     ? [
-        { name: "Online (Razorpay)", value: payStats.razorpay.total ?? 0, color: "#0672a7" },
+        { name: "Online (Razorpay)", value: payStats.razorpay.total ?? 0, color: "#05618e" },
         { name: "Cash on Delivery",  value: payStats.cod.total ?? 0,      color: "#f59e0b" },
       ].filter((d) => d.value > 0)
     : [];
 
   const paymentBarData = payStats
     ? [
-        { name: "Online",   Orders: payStats.razorpay.count, fill: "#0672a7" },
+        { name: "Online",   Orders: payStats.razorpay.count, fill: "#05618e" },
         { name: "COD",      Orders: payStats.cod.count,      fill: "#f59e0b" },
         { name: "Refunded", Orders: payStats.refunded.count, fill: "#ef4444" },
       ]
     : [];
 
-  const statusBarData = ["Pending","Processing","Printing","Shipped","Delivered","Cancelled"].map(
+  const statusBarData = ["Pending","Processing","Printing","Ready for Delivery","Shipped","Delivered","Cancelled"].map(
     (status) => ({
       status,
       Orders: stats?.statusCounts?.find((s) => s._id === status)?.count ?? 0,
@@ -192,7 +203,7 @@ export default function Dashboard() {
   /* Performance metrics */
   const delivered = stats?.statusCounts?.find((s) => s._id === "Delivered")?.count ?? 0;
   const cancelled = stats?.statusCounts?.find((s) => s._id === "Cancelled")?.count ?? 0;
-  const inProgress = ["Pending","Processing","Printing","Shipped"].reduce(
+  const inProgress = ["Pending","Processing","Printing","Ready for Delivery","Shipped"].reduce(
     (sum, s) => sum + (stats?.statusCounts?.find((c) => c._id === s)?.count ?? 0), 0
   );
   const safeTotal = totalOrders || 1;
@@ -528,11 +539,13 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Quick Actions ── */}
+          {/* ── Quick Actions — hidden entirely when this account holds none
+               of these sections, rather than left as an empty panel ── */}
+          {quickActions.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <CardHeader icon={Settings} title="Quick Actions" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {QUICK_ACTIONS.map(({ to, label, icon: Icon, desc, iconBg, iconColor }) => (
+              {quickActions.map(({ to, label, icon: Icon, desc, iconBg, iconColor }) => (
                 <Link
                   key={to}
                   to={to}
@@ -555,6 +568,7 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+          )}
         </>
       )}
     </div>

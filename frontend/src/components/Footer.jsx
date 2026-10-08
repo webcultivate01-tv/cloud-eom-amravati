@@ -1,11 +1,7 @@
 import { Link } from "react-router-dom";
 import logoImg from "../assets/logo.png";
 
-// Google Fonts — Playfair Display + Montserrat
-const fontLink = document.createElement("link");
-fontLink.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@800;900&family=Montserrat:wght@700&display=swap";
-fontLink.rel = "stylesheet";
-if (!document.head.querySelector("[href*='Playfair+Display']")) document.head.appendChild(fontLink);
+// Fonts are loaded once, non-blocking, from index.html.
 
 const CATEGORIES = ["Cup", "T-Shirt", "Diary", "Pen", "ID Card", "Frame", "Keychain", "Banner"];
 const QUICK_LINKS = [["Home", "/"], ["Products", "/products"], ["My Orders", "/orders"], ["Cart", "/cart"], ["Contact Us", "/contact"], ["Login", "/login"]];
@@ -18,17 +14,17 @@ const INFO = [
 ];
 
 const IconMapPin = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0672a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#05618e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
   </svg>
 );
 const IconPhone = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0672a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#05618e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
   </svg>
 );
 const IconMail = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0672a7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#05618e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
   </svg>
 );
@@ -72,7 +68,7 @@ export default function Footer() {
     <footer style={{ background: "#f3f7fa", borderTop: "1px solid #dee9f0" }} className="mt-auto">
 
       {/* ── CTA Strip ── */}
-      <div style={{ background: "linear-gradient(120deg, #0672a7, #0c4a69)" }}>
+      <div style={{ background: "linear-gradient(120deg, #05618e, #0a3f59)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-3.5">
             <div className="flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 46, height: 46, background: "rgba(255,255,255,0.16)" }}>
@@ -95,7 +91,7 @@ export default function Footer() {
               alignItems: "center",
               gap: 6,
               background: "#fff",
-              color: "#0672a7",
+              color: "#05618e",
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 700,
               fontSize: 13,
@@ -117,24 +113,24 @@ export default function Footer() {
           <div className="col-span-2 lg:col-span-1 flex flex-col gap-5">
             <Link to="/" className="flex flex-col items-start gap-2 w-fit no-underline">
               <img src={logoImg} alt="Cloud Graphics — Visual Solution For Your Business" style={{ height: 74, width: "auto" }} />
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "8px", letterSpacing: "0.5em", color: "#94a3b8" }}>AMRAVATI</span>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: "8px", letterSpacing: "0.5em", color: "#475569" }}>AMRAVATI</span>
             </Link>
 
-            <p className="text-sm text-gray-500 leading-relaxed m-0">
+            <p className="text-sm text-black leading-relaxed m-0">
               Premium custom gift printing in Amravati. Personalize cups, t-shirts, diaries & more with your photos and designs.
             </p>
 
             {/* Contact info */}
             <div className="flex flex-col gap-2.5">
-              <div className="flex items-start gap-2.5 text-sm text-gray-500">
+              <div className="flex items-start gap-2.5 text-sm text-black">
                 <IconMapPin />
                 <span className="leading-relaxed">Shivaji Chowk, Akoli Rd, Amravati, Maharashtra 444607</span>
               </div>
-              <div className="flex items-start gap-2.5 text-sm text-gray-500">
+              <div className="flex items-start gap-2.5 text-sm text-black">
                 <IconPhone />
                 <span>093076 41746</span>
               </div>
-              <div className="flex items-start gap-2.5 text-sm text-gray-500">
+              <div className="flex items-start gap-2.5 text-sm text-black">
                 <IconMail />
                 <span>info@cloudgraphics.in</span>
               </div>
@@ -146,9 +142,9 @@ export default function Footer() {
                 <a key={label} href={href} aria-label={label} title={label}
                   target="_blank" rel="noopener noreferrer"
                   className="w-9 h-9 rounded-lg border flex items-center justify-center transition-all no-underline"
-                  style={{ borderColor: '#0672a7', color: '#0672a7', background: '#eff8fd' }}
-                  onMouseEnter={e=>{e.currentTarget.style.background='#0672a7'; e.currentTarget.style.color='#fff';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='#eff8fd'; e.currentTarget.style.color='#0672a7';}}>
+                  style={{ borderColor: '#05618e', color: '#05618e', background: '#eff8fd' }}
+                  onMouseEnter={e=>{e.currentTarget.style.background='#05618e'; e.currentTarget.style.color='#fff';}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='#eff8fd'; e.currentTarget.style.color='#05618e';}}>
                   <Icon />
                 </a>
               ))}
@@ -157,13 +153,13 @@ export default function Footer() {
 
           {/* ── 2. Quick Links ── */}
           <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-bold tracking-widest text-gray-900 uppercase pb-2.5 border-b border-gray-100 m-0">
+            <h4 className="text-xs font-bold tracking-widest uppercase pb-2.5 border-b border-gray-100 m-0" style={{ color: "#0a3f59" }}>
               Quick Links
             </h4>
             {QUICK_LINKS.map(([label, to]) => (
               <Link key={to} to={to}
-                className="flex items-center gap-2 text-sm text-gray-500 transition-colors no-underline group"
-                onMouseEnter={e=>e.currentTarget.style.color='#0672a7'}
+                className="flex items-center gap-2 text-sm text-black transition-colors no-underline group"
+                onMouseEnter={e=>e.currentTarget.style.color='#05618e'}
                 onMouseLeave={e=>e.currentTarget.style.color=''}>
                 <span className="text-gray-300 group-hover:text-brand-400 transition-colors"><IconArrow /></span>
                 {label}
@@ -173,13 +169,13 @@ export default function Footer() {
 
           {/* ── 3. Categories ── */}
           <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-bold tracking-widest text-gray-900 uppercase pb-2.5 border-b border-gray-100 m-0">
+            <h4 className="text-xs font-bold tracking-widest uppercase pb-2.5 border-b border-gray-100 m-0" style={{ color: "#0a3f59" }}>
               Categories
             </h4>
             {CATEGORIES.map((cat) => (
               <Link key={cat} to={`/products?category=${cat}`}
-                className="flex items-center gap-2 text-sm text-gray-500 transition-colors no-underline group"
-                onMouseEnter={e=>e.currentTarget.style.color='#0672a7'}
+                className="flex items-center gap-2 text-sm text-black transition-colors no-underline group"
+                onMouseEnter={e=>e.currentTarget.style.color='#05618e'}
                 onMouseLeave={e=>e.currentTarget.style.color=''}>
                 <span className="text-gray-300 group-hover:text-brand-400 transition-colors"><IconArrow /></span>
                 {cat}
@@ -189,14 +185,14 @@ export default function Footer() {
 
           {/* ── 4. Information ── */}
           <div className="col-span-2 sm:col-span-1 flex flex-col gap-3">
-            <h4 className="text-xs font-bold tracking-widest text-gray-900 uppercase pb-2.5 border-b border-gray-100 m-0">
+            <h4 className="text-xs font-bold tracking-widest uppercase pb-2.5 border-b border-gray-100 m-0" style={{ color: "#0a3f59" }}>
               Information
             </h4>
             <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:flex sm:flex-col sm:gap-3">
             {INFO.map(({ label, to }) => (
               <Link key={to} to={to}
-                className="flex items-center gap-2 text-sm text-gray-500 no-underline group transition-colors"
-                onMouseEnter={e => e.currentTarget.style.color = '#0672a7'}
+                className="flex items-center gap-2 text-sm text-black no-underline group transition-colors"
+                onMouseEnter={e => e.currentTarget.style.color = '#05618e'}
                 onMouseLeave={e => e.currentTarget.style.color = ''}>
                 <span className="text-gray-300"><IconArrow /></span>
                 {label}
@@ -225,7 +221,7 @@ export default function Footer() {
       </div>
 
       {/* ── Bottom Bar ── */}
-      <div style={{ borderTop: "3px solid #0672a7", background: "#0b2836" }}>
+      <div style={{ borderTop: "3px solid #05618e", background: "#0b2836" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-4 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2">
           <p className="text-xs text-center sm:text-left m-0" style={{ color: "#94aebd" }}>
             © {new Date().getFullYear()} <span className="font-semibold" style={{ color: "#fff" }}>Cloud Graphics Amravati</span>. All rights reserved.
@@ -238,7 +234,7 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="font-semibold no-underline transition-colors"
               style={{ color: "#fff" }}
-              onMouseEnter={e => e.currentTarget.style.color = '#0672a7'}
+              onMouseEnter={e => e.currentTarget.style.color = '#05618e'}
               onMouseLeave={e => e.currentTarget.style.color = '#fff'}
             >
               Tejas Mehar

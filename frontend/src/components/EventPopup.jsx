@@ -115,7 +115,7 @@ export default function EventPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6"
       style={{ background: "rgba(8, 44, 62, 0.62)", backdropFilter: "blur(6px)" }}
       onClick={(e) => e.target === e.currentTarget && closeAll()}
       role="dialog"
@@ -172,7 +172,13 @@ export default function EventPopup() {
           <h2
             id="cg-event-title"
             className="text-xl font-black text-slate-900 leading-snug mb-1.5"
-            style={{ fontFamily: "'Playfair Display', serif" }}
+            // Playfair's default numerals are old-style (digits rise and dip), which
+            // makes prices like ₹199 hard to read — force lining figures
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontVariantNumeric: "lining-nums",
+              fontFeatureSettings: "'lnum' 1",
+            }}
           >
             {event.title}
           </h2>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { submitInquiry } from "../features/inquiry/inquirySlice";
 import { toast } from "react-toastify";
@@ -75,6 +76,14 @@ export default function Contact() {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
+
+  // After a successful submit, send the user back to the home page
+  useEffect(() => {
+    if (!submitted) return;
+    const t = setTimeout(() => navigate("/"), 3000);
+    return () => clearTimeout(t);
+  }, [submitted, navigate]);
 
   const validate = () => {
     const e = {};
@@ -110,8 +119,8 @@ export default function Contact() {
   const inputCls = (err) =>
     `w-full border rounded-lg px-4 py-3 text-sm outline-none font-[inherit] transition-all duration-200 box-border appearance-none ${
       err
-        ? "border-[#0672a7] bg-[#eff8fd] focus:border-[#0672a7] focus:ring-2 focus:ring-[#daeffa]"
-        : "border-gray-200 bg-white focus:border-[#0672a7] focus:ring-2 focus:ring-[#daeffa] hover:border-gray-300"
+        ? "border-[#05618e] bg-[#eff8fd] focus:border-[#05618e] focus:ring-2 focus:ring-[#daeffa]"
+        : "border-gray-200 bg-white focus:border-[#05618e] focus:ring-2 focus:ring-[#daeffa] hover:border-gray-300"
     }`;
 
   /* ── Success Screen ── */
@@ -126,11 +135,12 @@ export default function Contact() {
           Thank you for reaching out. We've received your message and sent a confirmation to your email.
           Our team will get back to you within <strong className="text-gray-700">24–48 hours</strong>.
         </p>
+        <p className="text-gray-400 text-xs mb-4">Redirecting you to the home page…</p>
         <button
-          onClick={() => setSubmitted(false)}
-          className="bg-[#0672a7] hover:bg-[#0a5b82] text-white px-8 py-3.5 rounded-xl font-bold text-sm border-none cursor-pointer transition-colors duration-200 inline-flex items-center gap-2"
+          onClick={() => navigate("/")}
+          className="bg-[#05618e] hover:bg-[#094d6f] text-white px-8 py-3.5 rounded-xl font-bold text-sm border-none cursor-pointer transition-colors duration-200 inline-flex items-center gap-2"
         >
-          <IconSend /> Send Another Inquiry
+          Go to Home Now
         </button>
       </Reveal>
     </div>
@@ -159,7 +169,7 @@ export default function Contact() {
               <div className="px-7 py-5 space-y-5">
                 {CONTACT_INFO.map(({ Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-4">
-                    <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-[#0672a7] mt-0.5" style={{ background: "#daeffa" }}>
+                    <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-[#05618e] mt-0.5" style={{ background: "#daeffa" }}>
                       <Icon />
                     </div>
                     <div>
@@ -206,38 +216,38 @@ export default function Contact() {
                 {/* Row 1 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-gray-600 tracking-wide">Full Name <span className="text-[#0672a7]">*</span></label>
+                    <label className="text-xs font-bold text-gray-600 tracking-wide">Full Name <span className="text-[#05618e]">*</span></label>
                     <input
                       type="text" name="name" placeholder="Your full name"
                       value={form.name} onChange={handleChange}
                       className={inputCls(errors.name)}
                     />
-                    {errors.name && <span className="text-[#0672a7] text-xs font-semibold flex items-center gap-1">{errors.name}</span>}
+                    {errors.name && <span className="text-[#05618e] text-xs font-semibold flex items-center gap-1">{errors.name}</span>}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-gray-600 tracking-wide">Email Address <span className="text-[#0672a7]">*</span></label>
+                    <label className="text-xs font-bold text-gray-600 tracking-wide">Email Address <span className="text-[#05618e]">*</span></label>
                     <input
                       type="email" name="email" placeholder="you@example.com"
                       value={form.email} onChange={handleChange}
                       className={inputCls(errors.email)}
                     />
-                    {errors.email && <span className="text-[#0672a7] text-xs font-semibold">{errors.email}</span>}
+                    {errors.email && <span className="text-[#05618e] text-xs font-semibold">{errors.email}</span>}
                   </div>
                 </div>
 
                 {/* Row 2 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-gray-600 tracking-wide">Phone Number <span className="text-[#0672a7]">*</span></label>
+                    <label className="text-xs font-bold text-gray-600 tracking-wide">Phone Number <span className="text-[#05618e]">*</span></label>
                     <input
                       type="tel" name="phone" placeholder="+91 98765 43210"
                       value={form.phone} onChange={handleChange}
                       className={inputCls(errors.phone)}
                     />
-                    {errors.phone && <span className="text-[#0672a7] text-xs font-semibold">{errors.phone}</span>}
+                    {errors.phone && <span className="text-[#05618e] text-xs font-semibold">{errors.phone}</span>}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-gray-600 tracking-wide">Subject <span className="text-[#0672a7]">*</span></label>
+                    <label className="text-xs font-bold text-gray-600 tracking-wide">Subject <span className="text-[#05618e]">*</span></label>
                     <div className="relative">
                       <select
                         name="subject" value={form.subject} onChange={handleChange}
@@ -251,7 +261,7 @@ export default function Contact() {
                         <IconChevron />
                       </div>
                     </div>
-                    {errors.subject && <span className="text-[#0672a7] text-xs font-semibold">{errors.subject}</span>}
+                    {errors.subject && <span className="text-[#05618e] text-xs font-semibold">{errors.subject}</span>}
                   </div>
                 </div>
 
@@ -265,7 +275,7 @@ export default function Contact() {
                     className={`${inputCls(errors.message)} resize-y min-h-28`}
                   />
                   {errors.message
-                    ? <span className="text-[#0672a7] text-xs font-semibold">{errors.message}</span>
+                    ? <span className="text-[#05618e] text-xs font-semibold">{errors.message}</span>
                     : <span className="text-gray-300 text-xs text-right">{form.message.length} / 1000 characters</span>
                   }
                 </div>
@@ -277,7 +287,7 @@ export default function Contact() {
                   className={`w-full flex items-center justify-center gap-2.5 px-7 py-4 rounded-xl font-bold text-sm text-white border-none cursor-pointer transition-all duration-200 ${
                     loading
                       ? "bg-[#5cb8e4] cursor-not-allowed"
-                      : "bg-[#0672a7] hover:bg-[#0a5b82] hover:shadow-lg hover:-translate-y-0.5"
+                      : "bg-[#05618e] hover:bg-[#094d6f] hover:shadow-lg hover:-translate-y-0.5"
                   }`}
                   style={!loading ? { boxShadow: "0 4px 14px rgba(10, 91, 130,0.3)" } : {}}
                 >
@@ -298,9 +308,9 @@ export default function Contact() {
 
                 <p className="text-center text-gray-400 text-xs">
                   By submitting, you agree to our{" "}
-                  <a href="#" className="text-[#0672a7] hover:underline font-medium">Privacy Policy</a>
+                  <a href="#" className="text-[#05618e] hover:underline font-medium">Privacy Policy</a>
                   {" "}and{" "}
-                  <a href="#" className="text-[#0672a7] hover:underline font-medium">Terms of Service</a>.
+                  <a href="#" className="text-[#05618e] hover:underline font-medium">Terms of Service</a>.
                 </p>
               </form>
             </div>

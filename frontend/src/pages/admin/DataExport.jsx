@@ -28,7 +28,7 @@ const EXPORT_TYPES = [
   {
     key: "orders", label: "Orders", desc: "Records, payments & tracking", Icon: ShoppingCart,
     filters: [{ param: "status", label: "Order Status",
-      options: opts("Pending", "Processing", "Printing", "Shipped", "Delivered", "Cancelled") }],
+      options: opts("Pending", "Processing", "Printing", "Ready for Delivery", "Shipped", "Delivered", "Cancelled") }],
   },
   {
     key: "payments", label: "Payments", desc: "Transactions & refunds", Icon: CreditCard,

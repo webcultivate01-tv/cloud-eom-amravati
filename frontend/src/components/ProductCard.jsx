@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../features/cart/cartSlice";
 import { toggleFavorite, selectFavoriteIds } from "../features/favorites/favoritesSlice";
@@ -39,7 +39,7 @@ export default function ProductCard({ product, badge }) {
   const handleFav = (e) => {
     e.stopPropagation();
     dispatch(toggleFavorite(product));
-    toast.success(isFav ? "Removed from favourites" : "Added to favourites ❤️");
+    toast.dismiss(); toast.success(isFav ? "Removed from favourites" : "Added to favourites ❤️");
   };
 
   return (
@@ -54,6 +54,9 @@ export default function ProductCard({ product, badge }) {
           src={cardImage || "https://placehold.co/400x500/f4f4f2/999?text=No+Image"}
           alt={product.name}
           loading="lazy"
+          decoding="async"
+          width="400"
+          height="400"
           className="w-full h-full object-cover transition-transform duration-[600ms] group-hover:scale-[1.04]"
         />
 
@@ -94,7 +97,9 @@ export default function ProductCard({ product, badge }) {
           {product.category}
         </p>
         <h3 className="font-display text-slate-900 text-[15px] md:text-[17px] font-bold leading-snug tracking-[-0.01em] line-clamp-2 mb-3">
-          {product.name}
+          <Link to={`/products/${product._id}`} className="text-inherit no-underline" onClick={(e) => e.stopPropagation()}>
+            {product.name}
+          </Link>
         </h3>
 
         <div className="mt-auto flex items-center justify-between gap-2">

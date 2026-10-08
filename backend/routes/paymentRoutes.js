@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
-const { adminOnly } = require("../middleware/adminMiddleware");
+const { requireModule, requireAnyModule } = require("../middleware/adminMiddleware");
 const {
   createRazorpayOrder,
   verifyPaymentAndCreateOrder,
@@ -15,8 +15,8 @@ router.post("/create-order", protect, createRazorpayOrder);
 router.post("/verify", protect, verifyPaymentAndCreateOrder);
 
 // Admin routes
-router.get("/all",   protect, adminOnly, getAllPayments);
-router.get("/stats", protect, adminOnly, getPaymentStats);
-router.put("/:orderId/refund", protect, adminOnly, markRefunded);
+router.get("/all",   protect, requireModule("payments"), getAllPayments);
+router.get("/stats", protect, requireAnyModule(["dashboard", "payments"]), getPaymentStats);
+router.put("/:orderId/refund", protect, requireModule("payments"), markRefunded);
 
 module.exports = router;

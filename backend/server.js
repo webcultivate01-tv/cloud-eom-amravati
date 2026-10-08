@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const compression = require("compression");
 const path = require("path");
 const connectDB = require("./config/db");
 
@@ -9,6 +10,7 @@ connectDB();
 
 const app = express();
 
+app.use(compression()); // gzip/deflate JSON + text responses
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -27,7 +29,9 @@ app.use("/api/upload",   require("./routes/uploadRoutes"));
 // ── Admin management routes ──────────────────────────────────
 app.use("/api/users",    require("./routes/userRoutes"));
 app.use("/api/admins",   require("./routes/adminRoutes"));
+app.use("/api/employees", require("./routes/employeeRoutes"));
 app.use("/api/events",   require("./routes/eventRoutes"));
+app.use("/api/hero",     require("./routes/heroRoutes"));
 app.use("/api/shipment",    require("./routes/shipmentRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/payment",    require("./routes/paymentRoutes"));

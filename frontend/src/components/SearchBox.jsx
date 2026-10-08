@@ -169,7 +169,7 @@ export default function SearchBox({ variant = "desktop", onNavigate }) {
             border: "none",
             borderTop: "1px solid #f0f0f0",
             background: "#fafafa",
-            color: "#0672a7",
+            color: "#05618e",
             fontSize: 12.5,
             fontWeight: 700,
             cursor: "pointer",
@@ -209,7 +209,7 @@ export default function SearchBox({ variant = "desktop", onNavigate }) {
             isMobile
               ? {
                   flex: 1, minWidth: 0,
-                  border: `1.5px solid ${focused ? "#0672a7" : "#e5e7eb"}`,
+                  border: `1.5px solid ${focused ? "#05618e" : "#e5e7eb"}`,
                   borderRadius: 12, padding: "9px 14px",
                   fontSize: 16, /* ≥16px stops iOS zoom-on-focus */
                   outline: "none", background: "#fafafa",
@@ -217,7 +217,7 @@ export default function SearchBox({ variant = "desktop", onNavigate }) {
                 }
               : {
                   width: focused ? 290 : 240,
-                  border: `1.5px solid ${focused ? "#0672a7" : "#9ca3af"}`,
+                  border: `1.5px solid ${focused ? "#05618e" : "#9ca3af"}`,
                   borderRadius: 22, padding: "9px 16px",
                   fontSize: "13.5px", color: "#1f2937", outline: "none",
                   fontFamily: "'Montserrat', sans-serif",
@@ -230,8 +230,8 @@ export default function SearchBox({ variant = "desktop", onNavigate }) {
           aria-label="Search"
           style={
             isMobile
-              ? { background: "#0672a7", color: "#fff", border: "none", borderRadius: 12, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Montserrat', sans-serif", flexShrink: 0 }
-              : { display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: "50%", background: "#0672a7", color: "#fff", border: "none", cursor: "pointer", flexShrink: 0 }
+              ? { background: "#05618e", color: "#fff", border: "none", borderRadius: 12, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Montserrat', sans-serif", flexShrink: 0 }
+              : { display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: "50%", background: "#05618e", color: "#fff", border: "none", cursor: "pointer", flexShrink: 0 }
           }
         >
           {isMobile ? "Go" : <IconSearch />}

@@ -49,7 +49,7 @@ export default function TermsConditions() {
 
           <section>
             <h2 className="text-base font-bold text-gray-800 mb-2">8. Contact Us</h2>
-            <p>For any queries regarding these terms, reach us at <span className="text-[#0672a7] font-semibold">info@cloudgraphics.in</span> or call <span className="font-semibold">+91 93076 41746</span>.</p>
+            <p>For any queries regarding these terms, reach us at <span className="text-[#05618e] font-semibold">info@cloudgraphics.in</span> or call <span className="font-semibold">+91 93076 41746</span>.</p>
           </section>
 
         </RevealGroup>

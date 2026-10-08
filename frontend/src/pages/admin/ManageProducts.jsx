@@ -14,6 +14,7 @@ import {
   LayoutGrid, List, PackageX, Layers,
 } from "lucide-react";
 import MultiImageInput from "../../components/MultiImageInput";
+import { confirmDialog } from "../../components/ConfirmDialog";
 
 /* ── Product type options ─────────────────────────────── */
 const TYPE_OPTIONS = [
@@ -64,7 +65,7 @@ export default function ManageProducts() {
   const CATEGORIES = categoryItems.map((c) => c.name);
 
   const EMPTY_FORM = {
-    name: "", description: "", price: "", originalPrice: "", brand: "", sku: "",
+    name: "", description: "", price: "", originalPrice: "", deliveryCharge: "", brand: "", sku: "",
     category: CATEGORIES[0] || "", stock: "100",
     allowCustomImage: false, requiresCustomImage: false, isAvailable: true,
     allowCOD: true,
@@ -107,7 +108,7 @@ export default function ManageProducts() {
     setEditId(p._id);
     setForm({
       name: p.name, description: p.description, price: p.price,
-      originalPrice: p.originalPrice || "", brand: p.brand || "", sku: p.sku || "",
+      originalPrice: p.originalPrice || "", deliveryCharge: p.deliveryCharge || "", brand: p.brand || "", sku: p.sku || "",
       category: p.category, stock: p.stock,
       allowCustomImage: !!p.requiresCustomImage,
       requiresCustomImage: p.requiresCustomImage || false, isAvailable: p.isAvailable,
@@ -136,7 +137,11 @@ export default function ManageProducts() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"?`)) return;
+    const ok = await confirmDialog({
+      title: `Delete "${name}"?`,
+      message: "This product will be permanently removed from the store. This cannot be undone.",
+    });
+    if (!ok) return;
     const result = await dispatch(deleteProduct(id));
     if (!result.error) toast.success("Product deleted");
     else toast.error("Delete failed");
@@ -359,6 +364,21 @@ export default function ManageProducts() {
               <input className="admin-input" placeholder="Weight (e.g. 500g)"
                 value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
             </Field>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+            <Field label="Delivery Charge" hint="₹ per unit · leave empty for free delivery">
+              <div className="relative">
+                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input className="admin-input pl-9" placeholder="0" type="number" min="0"
+                  value={form.deliveryCharge} onChange={(e) => setForm({ ...form, deliveryCharge: e.target.value })} />
+              </div>
+            </Field>
+            {Number(form.deliveryCharge) > 0 && Number(form.price) > 0 && (
+              <p className="sm:col-span-3 self-end text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 m-0">
+                Customer pays ₹{Number(form.price).toLocaleString("en-IN")} product + ₹{Number(form.deliveryCharge).toLocaleString("en-IN")} delivery
+                = <strong>₹{(Number(form.price) + Number(form.deliveryCharge)).toLocaleString("en-IN")}</strong> per unit
+              </p>
+            )}
           </div>
           {form.originalPrice && Number(form.originalPrice) > Number(form.price) && (
             <div className="mb-4 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-1">

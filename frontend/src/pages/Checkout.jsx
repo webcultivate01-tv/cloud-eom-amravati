@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { placeOrder, resetOrderState } from "../features/orders/orderSlice";
 import { createRazorpayOrder, verifyAndPlaceOrder, resetPayment } from "../features/payment/paymentSlice";
-import { clearCart, selectCartTotal, setItemImage, makeCartKey } from "../features/cart/cartSlice";
+import { clearCart, selectCartTotal, selectCartDelivery, setItemImage, makeCartKey } from "../features/cart/cartSlice";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../utils/api";
 import { downloadFile } from "../utils/download";
+import { loadRazorpay } from "../utils/loadRazorpay";
 import { validateImageFile } from "../utils/uploadLimits";
 import {
   Package, MapPin, Palette, CheckCircle2, CreditCard, Banknote, ShieldCheck, Home, Briefcase,
@@ -52,7 +53,9 @@ export default function Checkout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items } = useSelector((s) => s.cart);
-  const total = useSelector(selectCartTotal);
+  const subtotal = useSelector(selectCartTotal);
+  const delivery = useSelector(selectCartDelivery);
+  const total = subtotal + delivery; // everything the customer pays: product cost + delivery
   const { loading: orderLoading, success: orderSuccess, error: orderError, createdOrder: codCreatedOrder } = useSelector((s) => s.orders);
   const { loading: payLoading, success: paySuccess, error: payError, createdOrder: payCreatedOrder } = useSelector((s) => s.payment);
   const { user } = useSelector((s) => s.auth);
@@ -148,6 +151,7 @@ export default function Checkout() {
 
   const handleRazorpay = async () => {
     if (missingImages.length > 0) { toast.error(`Upload image for: ${missingImages.map((i) => i.name).join(", ")}`); return; }
+    try { await loadRazorpay(); } catch { toast.error("Could not load the payment gateway. Check your connection and try again."); return; }
     const result = await dispatch(createRazorpayOrder(total));
     if (result.error) return;
     const { razorpayOrderId, amount, currency, keyId } = result.payload;
@@ -155,7 +159,7 @@ export default function Checkout() {
       key: keyId || import.meta.env.VITE_RAZORPAY_KEY_ID, amount, currency,
       name: "Cloud Graphics Amravati", description: "Custom Print Products", order_id: razorpayOrderId,
       prefill: { name: user?.name || shipping.fullName, email: user?.email || "", contact: shipping.phone, vpa: upiId.trim() || undefined },
-      theme: { color: "#0672a7" },
+      theme: { color: "#05618e" },
       handler: async (response) => {
         await dispatch(verifyAndPlaceOrder({ ...response, items: buildOrderItems(), shippingAddress: shipping, customerNote: note }));
       },
@@ -701,9 +705,17 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center py-4 px-4 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="py-4 px-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div className="flex justify-between text-[13px] text-slate-500 font-semibold mb-1">
+                      <span>Product cost</span><span>₹{subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-[13px] text-slate-500 font-semibold mb-3">
+                      <span>Delivery charges</span><span>{delivery > 0 ? `₹${delivery.toLocaleString()}` : "Free"}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-200">
                     <span className="font-black text-slate-900 text-[15px]">Total Payable</span>
                     <span className="text-brand-700 font-black text-[24px] tracking-tight">₹{total.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -759,12 +771,14 @@ export default function Checkout() {
 
               <div className="px-5 py-4 border-t border-slate-100 flex flex-col gap-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-[12.5px] font-semibold">Subtotal</span>
-                  <span className="text-slate-900 font-bold text-[12.5px]">₹{total.toLocaleString()}</span>
+                  <span className="text-slate-500 text-[12.5px] font-semibold">Product cost</span>
+                  <span className="text-slate-900 font-bold text-[12.5px]">₹{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-[12.5px] font-semibold">Shipping</span>
-                  <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">Free</span>
+                  <span className="text-slate-500 text-[12.5px] font-semibold">Delivery charges</span>
+                  {delivery > 0
+                    ? <span className="text-slate-900 font-bold text-[12.5px]">₹{delivery.toLocaleString()}</span>
+                    : <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">Free</span>}
                 </div>
                 {step >= 4 && (
                   <div className="flex justify-between items-center">
@@ -796,7 +810,7 @@ export default function Checkout() {
 
             {/* Trust strip */}
             <ul className="mt-3 flex flex-col gap-2 m-0 p-0 list-none">
-              {TRUST.map(({ Icon, text }) => (
+              {TRUST.filter(({ text }) => delivery === 0 || !text.startsWith("Free delivery")).map(({ Icon, text }) => (
                 <li key={text} className="flex items-center gap-2.5 text-[11.5px] font-semibold text-slate-500 px-2">
                   <Icon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   {text}

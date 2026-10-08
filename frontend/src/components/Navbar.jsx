@@ -12,12 +12,15 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import { clearCart, selectCartCount } from "../features/cart/cartSlice";
 import { selectFavoriteCount } from "../features/favorites/favoritesSlice";
+import { fetchCategories } from "../features/categories/categorySlice";
+import { homePathFor } from "../utils/panel";
 import { toast } from "react-toastify";
 import SearchBox from "./SearchBox";
 
 const PROMO_CATEGORIES = ["Sale", "New Arrivals"];
-const PRODUCT_CATEGORIES = ["Cup", "T-Shirt", "Diary", "Pen", "ID Card", "Frame", "Keychain", "Banner"].sort((a, b) => a.localeCompare(b));
-const CATEGORIES = [...PROMO_CATEGORIES, ...PRODUCT_CATEGORIES];
+/* Used only until the category list loads (or if the API is unreachable).
+   The real list is managed in Admin → Categories ("Show in navbar"). */
+const FALLBACK_PRODUCT_CATEGORIES = ["Cup", "T-Shirt", "Diary", "Pen", "ID Card", "Frame", "Keychain", "Banner"].sort((a, b) => a.localeCompare(b));
 
 /* Standalone pages pinned to the end of the desktop category bar */
 const PAGE_LINKS = [
@@ -40,7 +43,7 @@ const IconSearch = () => (
   </svg>
 );
 const IconHeart = ({ filled }) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? "#0672a7" : "none"} stroke={filled ? "#0672a7" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? "#05618e" : "none"} stroke={filled ? "#05618e" : "currentColor"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
   </svg>
 );
@@ -142,7 +145,7 @@ const styles = `
     bottom: 0;
     left: 0; right: 0;
     height: 2px;
-    background: #0672a7;
+    background: #05618e;
     transform: scaleX(0);
     transform-origin: center;
     transition: transform 0.2s ease;
@@ -168,7 +171,7 @@ const styles = `
     padding: 0;
     text-decoration: none;
   }
-  .icon-btn:hover { background: #eff8fd; color: #0672a7; }
+  .icon-btn:hover { background: #eff8fd; color: #05618e; }
 
   .badge {
     position: absolute;
@@ -176,7 +179,7 @@ const styles = `
     right: 2px;
     min-width: 17px;
     height: 17px;
-    background: #0672a7;
+    background: #05618e;
     color: #fff;
     border-radius: 50%;
     font-size: 9px;
@@ -223,6 +226,16 @@ export default function Navbar() {
   const { user } = useSelector((s) => s.auth);
   const cartCount = useSelector(selectCartCount);
   const favCount = useSelector(selectFavoriteCount);
+  const { items: allCategories } = useSelector((s) => s.categories);
+
+  useEffect(() => { dispatch(fetchCategories()); }, [dispatch]);
+
+  const CATEGORIES = [
+    ...PROMO_CATEGORIES,
+    ...(allCategories.length > 0
+      ? allCategories.filter((c) => c.isActive && c.showInNavbar !== false).map((c) => c.name)
+      : FALLBACK_PRODUCT_CATEGORIES),
+  ];
 
   const [mobileDrawer, setMobileDrawer] = useState(false);
   const [drawerAccountOpen, setDrawerAccountOpen] = useState(false);
@@ -279,9 +292,9 @@ export default function Navbar() {
   };
 
   const catQuery = (cat) =>
-    cat === "Sale" ? "?sale=true" : cat === "New Arrivals" ? "?sort=newest" : `?category=${cat}`;
+    cat === "Sale" ? "?sale=true" : cat === "New Arrivals" ? "?sort=newest" : `?category=${encodeURIComponent(cat)}`;
   const catActive = (cat) =>
-    location.search.includes(cat) || (cat === "Sale" && location.search.includes("sale"));
+    decodeURIComponent(location.search).includes(cat) || (cat === "Sale" && location.search.includes("sale"));
 
   return (
     <>
@@ -300,7 +313,7 @@ export default function Navbar() {
       >
 
         {/* ── Offer Ticker Bar ── */}
-        <div style={{ background: "#0672a7", padding: "7px 0", overflow: "hidden" }}>
+        <div style={{ background: "#05618e", padding: "7px 0", overflow: "hidden" }}>
           <div style={{
             display: "flex",
             alignItems: "center",
@@ -423,7 +436,7 @@ export default function Navbar() {
                     style={{
                       width: 28,
                       height: 28,
-                      background: "#0672a7",
+                      background: "#05618e",
                       borderRadius: "50%",
                       color: "#fff",
                       display: "flex",
@@ -473,6 +486,7 @@ export default function Navbar() {
                     </div>
                     {[
                       user.role === "admin" && { to: "/admin/dashboard", icon: <IconDashboard />, label: "Admin Panel" },
+                      user.role === "employee" && { to: homePathFor(user), icon: <IconDashboard />, label: "Staff Panel" },
                       { to: "/profile", icon: <IconUser />, label: "My Profile" },
                       { to: "/favorites", icon: <IconHeart />, label: "My Favourites" },
                       { to: "/orders", icon: <IconPackage />, label: "My Orders" },
@@ -493,7 +507,7 @@ export default function Navbar() {
                           fontFamily: "'Montserrat', sans-serif",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#eff8fd"; e.currentTarget.style.color = "#0672a7"; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#eff8fd"; e.currentTarget.style.color = "#05618e"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "#333"; }}
                       >
                         {item.icon} {item.label}
@@ -511,7 +525,7 @@ export default function Navbar() {
                           padding: "10px 16px",
                           border: "none",
                           background: "none",
-                          color: "#0672a7",
+                          color: "#05618e",
                           fontSize: 13,
                           fontWeight: 600,
                           cursor: "pointer",
@@ -540,7 +554,7 @@ export default function Navbar() {
                     fontFamily: "'Montserrat', sans-serif",
                     transition: "color 0.15s",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#0672a7"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#05618e"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "#333"; }}
                 >
                   Sign In
@@ -554,7 +568,7 @@ export default function Navbar() {
                     color: "#fff",
                     padding: "6px 14px",
                     borderRadius: 20,
-                    background: "#0672a7",
+                    background: "#05618e",
                     fontFamily: "'Montserrat', sans-serif",
                     whiteSpace: "nowrap",
                   }}
@@ -594,13 +608,13 @@ export default function Navbar() {
                   fontSize: "12.5px",
                   fontWeight: 600,
                   letterSpacing: "0.5px",
-                  color: active ? "#0672a7" : "#4B5563",
+                  color: active ? "#05618e" : "#4B5563",
                   whiteSpace: "nowrap",
                   fontFamily: "'Montserrat', sans-serif",
                   textTransform: "uppercase",
                   transition: "color 0.15s",
                 }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#0672a7"; }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#05618e"; }}
                 onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#4B5563"; }}
               >
                 {cat.toUpperCase()}
@@ -707,12 +721,12 @@ export default function Navbar() {
                   textDecoration: "none",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: active ? "#0672a7" : "#333",
+                  color: active ? "#05618e" : "#333",
                   background: active ? "#eff8fd" : "transparent",
                   fontFamily: "'Montserrat', sans-serif",
                   transition: "background 0.15s, color 0.15s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#eff8fd"; e.currentTarget.style.color = "#0672a7"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#eff8fd"; e.currentTarget.style.color = "#05618e"; }}
                 onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#333"; } }}
               >
                 {item.icon} {item.label}
@@ -736,7 +750,7 @@ export default function Navbar() {
               }}>
                 <div style={{
                   width: 40, height: 40,
-                  background: "#0672a7",
+                  background: "#05618e",
                   borderRadius: "50%",
                   color: "#fff",
                   display: "flex",
@@ -768,7 +782,7 @@ export default function Navbar() {
                   padding: "11px 18px",
                   border: "none",
                   background: drawerAccountOpen ? "#eff8fd" : "none",
-                  color: drawerAccountOpen ? "#0672a7" : "#333",
+                  color: drawerAccountOpen ? "#05618e" : "#333",
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -791,6 +805,7 @@ export default function Navbar() {
                 <div style={{ background: "#fafafa", borderTop: "1px solid #f0f0f0", borderBottom: "1px solid #f0f0f0" }}>
                   {[
                     user.role === "admin" && { to: "/admin/dashboard", icon: <IconDashboard />, label: "Admin Panel" },
+                    user.role === "employee" && { to: homePathFor(user), icon: <IconDashboard />, label: "Staff Panel" },
                     { to: "/profile", icon: <IconUser />, label: "My Profile" },
                     { to: "/orders", icon: <IconPackage />, label: "My Orders" },
                     { to: "/favorites", icon: <IconHeart />, label: "My Favourites" },
@@ -807,13 +822,13 @@ export default function Navbar() {
                           gap: 12,
                           padding: "11px 18px 11px 32px",
                           textDecoration: "none",
-                          color: active ? "#0672a7" : "#333",
+                          color: active ? "#05618e" : "#333",
                           background: active ? "#eff8fd" : "transparent",
                           fontSize: 13,
                           fontFamily: "'Montserrat', sans-serif",
                           transition: "background 0.15s, color 0.15s",
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#eff8fd"; e.currentTarget.style.color = "#0672a7"; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#eff8fd"; e.currentTarget.style.color = "#05618e"; }}
                         onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#333"; } }}
                       >
                         {item.icon} {item.label}
@@ -835,7 +850,7 @@ export default function Navbar() {
                     padding: "11px 18px",
                     border: "none",
                     background: "none",
-                    color: "#0672a7",
+                    color: "#05618e",
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -863,12 +878,12 @@ export default function Navbar() {
                   height: 44,
                   margin: "0 auto 10px",
                   borderRadius: "50%",
-                  background: "#0672a7",
+                  background: "#05618e",
                   color: "#fff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 4px 14px rgba(6, 114, 167,0.32)",
+                  boxShadow: "0 4px 14px rgba(5, 97, 142,0.32)",
                 }}>
                   <IconUser />
                 </div>
@@ -899,14 +914,14 @@ export default function Navbar() {
                     justifyContent: "center",
                     gap: 8,
                     padding: "12px",
-                    background: "#0672a7",
+                    background: "#05618e",
                     borderRadius: 12,
                     color: "#fff",
                     fontSize: 13,
                     fontWeight: 700,
                     textDecoration: "none",
                     fontFamily: "'Montserrat', sans-serif",
-                    boxShadow: "0 4px 14px rgba(6, 114, 167,0.3)",
+                    boxShadow: "0 4px 14px rgba(5, 97, 142,0.3)",
                   }}
                 >
                   Sign In <IconArrowRight />
@@ -927,7 +942,7 @@ export default function Navbar() {
                   style={{
                     fontSize: 11.5,
                     fontWeight: 800,
-                    color: "#0672a7",
+                    color: "#05618e",
                     textDecoration: "none",
                     fontFamily: "'Montserrat', sans-serif",
                   }}

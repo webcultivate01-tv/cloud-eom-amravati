@@ -2,7 +2,7 @@ const fs = require("fs");
 const QRCode = require("qrcode");
 const PDFDocument = require("pdfkit");
 const {
-  COMPANY, BANK, LOGO_DARK, round2, splitGst,
+  COMPANY, BANK, LOGO_DARK, SIGNATURE, round2, splitGst,
 } = require("./company");
 
 /* ══════════════════════════════════════════════════════════════
@@ -180,9 +180,9 @@ const itemColumns = (w) => {
   return cols;
 };
 
-const FOOTER_H = 200; // bank/QR + totals + signature, kept together on one page
+const FOOTER_H = 236; // bank/QR + totals + signature, kept together on one page
 
-const drawItems = (doc, top, { items, totals }) => {
+const drawItems = (doc, top, { items, itemsTotal }) => {
   const W = doc.page.width;
   const H = doc.page.height;
   const w = W - MARGIN * 2;
@@ -234,7 +234,7 @@ const drawItems = (doc, top, { items, totals }) => {
   doc.font("Helvetica-Bold").fontSize(9.5).fillColor(INK);
   cell(cols[1], "SUBTOTAL", y + 8);
   cell(cols[2], items.reduce((n, it) => n + Number(it.qty), 0), y + 8);
-  cell(cols[4], `Rs. ${money(totals.gross)}`, y + 8);
+  cell(cols[4], `Rs. ${money(itemsTotal)}`, y + 8);
   return y + 26;
 };
 
@@ -242,7 +242,7 @@ const drawFooter = async (doc, top, model) => {
   const W = doc.page.width;
   const H = doc.page.height;
   const right = W - MARGIN;
-  const { totals, received } = model;
+  const { totals, received, itemsTotal, deliveryCharge } = model;
 
   if (top + FOOTER_H > H - 40) { doc.addPage(); drawFrame(doc); top = 50; }
 
@@ -272,17 +272,25 @@ const drawFooter = async (doc, top, model) => {
   /* Right — totals, amount in words, signature */
   const rx = 300;
   hline(doc, rx, right, top + 14, GOLD, 1);
-  doc.font("Helvetica-Bold").fontSize(11).fillColor(INK).text("Total Amount", rx, top + 24, { lineBreak: false });
-  doc.text(`Rs. ${money(totals.gross)}`, rx, top + 24, { width: right - rx, align: "right" });
-  hline(doc, rx, right, top + 46, GOLD, 0.6);
-  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Received Amount", rx, top + 55, { lineBreak: false });
-  doc.text(`Rs. ${money(received)}`, rx, top + 55, { width: right - rx, align: "right" });
+  [["Product Cost", itemsTotal, top + 22], ["Delivery Charges", deliveryCharge, top + 38]].forEach(([label, amt, ly]) => {
+    doc.font("Helvetica").fontSize(9).fillColor(MUTED).text(label, rx, ly, { lineBreak: false });
+    doc.fillColor(INK).text(amt > 0 || label === "Product Cost" ? `Rs. ${money(amt)}` : "Free", rx, ly, { width: right - rx, align: "right" });
+  });
+  hline(doc, rx, right, top + 56, GOLD, 0.6);
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(INK).text("Total Amount", rx, top + 64, { lineBreak: false });
+  doc.text(`Rs. ${money(totals.gross)}`, rx, top + 64, { width: right - rx, align: "right" });
+  hline(doc, rx, right, top + 86, GOLD, 0.6);
+  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Received Amount", rx, top + 95, { lineBreak: false });
+  doc.text(`Rs. ${money(received)}`, rx, top + 95, { width: right - rx, align: "right" });
 
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Total Amount (in words)", rx, top + 80, { lineBreak: false });
-  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(amountInWords(totals.gross), rx, top + 93, { width: right - rx });
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Total Amount (in words)", rx, top + 118, { lineBreak: false });
+  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(amountInWords(totals.gross), rx, top + 131, { width: right - rx });
 
-  const sigTop = top + 116;
+  const sigTop = top + 156;
   doc.save().lineWidth(0.7).strokeColor(GOLD).roundedRect(rx, sigTop, right - rx, 74, 8).stroke().restore();
+  if (fs.existsSync(SIGNATURE)) {
+    doc.image(SIGNATURE, rx + 40, sigTop + 6, { fit: [right - rx - 80, 36], align: "center", valign: "bottom" });
+  }
   hline(doc, rx + 40, right - 40, sigTop + 44, MUTED, 0.6);
   doc.font("Helvetica-Bold").fontSize(9).fillColor(INK)
      .text("Signature", rx, sigTop + 50, { width: right - rx, align: "center" });
@@ -306,6 +314,11 @@ const buildInvoiceModel = (order) => {
   }));
 
   const totals = splitGst(order.totalPrice);
+  // Product cost is recomputed from the lines; delivery is whatever remains of
+  // the total, so the two always add up to it — including on orders placed
+  // before delivery charges were stored (those come out as 0 / Free).
+  const itemsTotal = round2(items.reduce((s, it) => s + it.amount, 0));
+  const deliveryCharge = Math.max(round2(order.totalPrice - itemsTotal), 0);
 
   const addr = order.shippingAddress || {};
   const addressText = [
@@ -339,6 +352,8 @@ const buildInvoiceModel = (order) => {
       address: addressText || "—",
     },
     items,
+    itemsTotal,
+    deliveryCharge,
     totals,
     received: paid ? totals.gross : 0,
     paymentLabel,

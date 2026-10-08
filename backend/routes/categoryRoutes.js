@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
-const { adminOnly } = require("../middleware/adminMiddleware");
+const { requireModule } = require("../middleware/adminMiddleware");
 const {
   getCategories,
   getAllCategoriesAdmin,
@@ -17,14 +17,14 @@ const {
 router.get("/", getCategories);
 
 // Admin
-router.get("/admin/all", protect, adminOnly, getAllCategoriesAdmin);
-router.post("/", protect, adminOnly, createCategory);
-router.put("/:id", protect, adminOnly, updateCategory);
-router.delete("/:id", protect, adminOnly, deleteCategory);
+router.get("/admin/all", protect, requireModule("categories"), getAllCategoriesAdmin);
+router.post("/", protect, requireModule("categories"), createCategory);
+router.put("/:id", protect, requireModule("categories"), updateCategory);
+router.delete("/:id", protect, requireModule("categories"), deleteCategory);
 
 // Subcategory admin routes
-router.post("/:id/subcategories", protect, adminOnly, addSubcategory);
-router.put("/:id/subcategories/:subId", protect, adminOnly, updateSubcategory);
-router.delete("/:id/subcategories/:subId", protect, adminOnly, deleteSubcategory);
+router.post("/:id/subcategories", protect, requireModule("categories"), addSubcategory);
+router.put("/:id/subcategories/:subId", protect, requireModule("categories"), updateSubcategory);
+router.delete("/:id/subcategories/:subId", protect, requireModule("categories"), deleteSubcategory);
 
 module.exports = router;

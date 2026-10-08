@@ -4,6 +4,7 @@ const {
   renderInvoice, renderInvoiceBuffer, buildInvoiceModel,
   formatInvoiceNumber, financialYear, invoiceFileName,
 } = require("../config/invoice");
+const { hasModule } = require("../middleware/adminMiddleware");
 
 /**
  * Return the order's invoice number, issuing one if it has none.
@@ -70,9 +71,9 @@ const downloadInvoice = async (req, res) => {
     const order = await loadBillableOrder(req.params.orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const isAdmin = req.user.role === "admin";
+    const isStaffViewer = hasModule(req.user, "orders");
     const isOwner = order.user?._id?.toString() === req.user._id.toString();
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isStaffViewer) {
       return res.status(403).json({ message: "Not authorised to view this invoice" });
     }
 
@@ -102,9 +103,9 @@ const previewInvoice = async (req, res) => {
     const order = await loadBillableOrder(req.params.orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const isAdmin = req.user.role === "admin";
+    const isStaffViewer = hasModule(req.user, "orders");
     const isOwner = order.user?._id?.toString() === req.user._id.toString();
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isStaffViewer) {
       return res.status(403).json({ message: "Not authorised to view this invoice" });
     }
     if (!isAdminBillable(order)) {

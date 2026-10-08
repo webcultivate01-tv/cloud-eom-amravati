@@ -8,15 +8,19 @@ import api from "../../utils/api";
 import { downloadFile, openFile } from "../../utils/download";
 import {
   ChevronDown, ChevronUp, Eye, MapPin, Phone, Mail, Package,
-  Inbox, CheckCircle2, XCircle, FileText, Download,
+  Inbox, CheckCircle2, XCircle, Clock, Printer, PackageCheck, Truck, FileText, Download,
 } from "lucide-react";
 
-const STATUSES = ["Pending", "Processing", "Printing", "Shipped", "Delivered", "Cancelled"];
+const STATUSES = ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped", "Delivered", "Cancelled"];
+
+/* The shop's real pipeline, in order — drives the step bar on each order. */
+const FLOW = ["Pending", "Printing", "Ready for Delivery", "Shipped", "Delivered"];
 
 const STATUS_CFG = {
   Pending:    { cls: "bg-amber-100 text-amber-700",   dot: "bg-amber-400" },
   Processing: { cls: "bg-blue-100 text-blue-700",     dot: "bg-blue-400" },
   Printing:   { cls: "bg-violet-100 text-violet-700", dot: "bg-violet-400" },
+  "Ready for Delivery": { cls: "bg-teal-100 text-teal-700", dot: "bg-teal-400" },
   Shipped:    { cls: "bg-sky-100 text-sky-700",       dot: "bg-sky-400" },
   Delivered:  { cls: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-400" },
   Cancelled:  { cls: "bg-red-100 text-red-600",       dot: "bg-red-400" },
@@ -42,18 +46,14 @@ const DATE_FILTERS = [
    business — they stay one click away in their own tabs rather than
    burying today's work under months of completed orders. */
 const TABS = [
-  { value: "active",    label: "Active Orders", icon: Inbox,        hint: "New, processing, printing and shipped" },
-  { value: "delivered", label: "Delivered",     icon: CheckCircle2, hint: "Completed orders — download bills here" },
-  { value: "cancelled", label: "Cancelled",     icon: XCircle,      hint: "Cancelled by customer or admin" },
+  { value: "active",    label: "All Active",         icon: Inbox,        hint: "Everything still in progress" },
+  { value: "pending",   label: "Pending",            icon: Clock,        hint: "New orders waiting to be started" },
+  { value: "printing",  label: "Printing",           icon: Printer,      hint: "Currently on the press" },
+  { value: "ready",     label: "Ready for Delivery", icon: PackageCheck, hint: "Packed and waiting for the delivery partner" },
+  { value: "shipped",   label: "Shipped",            icon: Truck,        hint: "Booked with the courier" },
+  { value: "delivered", label: "Delivered",          icon: CheckCircle2, hint: "Completed orders — download bills here" },
+  { value: "cancelled", label: "Cancelled",          icon: XCircle,      hint: "Cancelled by customer or admin" },
 ];
-
-/* Which statuses the dropdown offers inside each tab. Delivered and
-   cancelled orders are terminal, so their tabs get no status control. */
-const TAB_STATUSES = {
-  active: ["Pending", "Processing", "Printing", "Shipped"],
-  delivered: [],
-  cancelled: [],
-};
 
 /* Admin can raise the bill for any live order — packing happens (and the
    printed bill needs to go in the box) well before a COD payment is
@@ -443,7 +443,7 @@ export default function ManageOrders() {
       </div>
 
       {/* Tabs — the working queue, then the two finished piles */}
-      <div className="flex flex-wrap gap-2 mb-5 border-b border-slate-200">
+      <div className="flex gap-1 mb-5 border-b border-slate-200 overflow-x-auto">
         {TABS.map(({ value, label, icon: Icon }) => {
           const active = tab === value;
           const count = groupCounts?.[value] ?? 0;
@@ -451,7 +451,7 @@ export default function ManageOrders() {
             <button
               key={value}
               onClick={() => handleTabChange(value)}
-              className={`relative flex items-center gap-2 px-4 py-2.5 -mb-px text-[13px] font-bold border-b-2 transition-colors ${
+              className={`relative shrink-0 whitespace-nowrap flex items-center gap-2 px-3.5 py-2.5 -mb-px text-[13px] font-bold border-b-2 transition-colors ${
                 active
                   ? "border-brand-600 text-brand-700"
                   : "border-transparent text-slate-400 hover:text-slate-700"
@@ -497,17 +497,6 @@ export default function ManageOrders() {
           </div>
         )}
 
-        {/* Status filter — only where the tab has more than one status */}
-        {TAB_STATUSES[tab].length > 0 && (
-          <select
-            className="admin-input !w-auto"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Active Statuses</option>
-            {TAB_STATUSES[tab].map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
       </div>
 
       {/* Orders list */}
@@ -520,14 +509,14 @@ export default function ManageOrders() {
         </div>
       ) : orders.length === 0 ? (
         <div className="admin-card p-16 text-center">
-          <p className="text-4xl mb-3">{tab === "active" ? "✅" : tab === "delivered" ? "📦" : "🎉"}</p>
+          <p className="text-4xl mb-3">{tab === "cancelled" ? "🎉" : tab === "delivered" ? "📦" : "✅"}</p>
           <p className="text-slate-500 font-medium">
-            {tab === "active"    && "No orders waiting — the queue is clear."}
-            {tab === "delivered" && "No delivered orders in this period yet."}
-            {tab === "cancelled" && "No cancelled orders. Good news."}
+            {tab === "delivered" ? "No delivered orders in this period yet."
+              : tab === "cancelled" ? "No cancelled orders. Good news."
+              : "No orders at this stage right now."}
           </p>
           <p className="text-slate-400 text-xs mt-1.5">
-            {tab === "active"
+            {["active", "pending"].includes(tab)
               ? "New orders land here the moment a customer checks out."
               : "Try widening the date filter above."}
           </p>
@@ -576,6 +565,11 @@ export default function ManageOrders() {
                     <div className="col-span-5 sm:col-span-2">
                       <p className="text-[10px] text-slate-400 font-medium leading-none mb-0.5">Total</p>
                       <p className="text-sm font-black text-slate-900">₹{order.totalPrice.toLocaleString()}</p>
+                      {order.deliveryCharge > 0 && (
+                        <p className="text-[10px] text-slate-400 font-medium leading-none mt-0.5">
+                          incl. ₹{order.deliveryCharge.toLocaleString()} delivery
+                        </p>
+                      )}
                     </div>
 
                     {/* Payment + Status badges */}
@@ -630,6 +624,46 @@ export default function ManageOrders() {
                 {/* ── Expanded details ─────────────────────────────── */}
                 {isExpanded && (
                   <div className="border-t border-slate-100 p-5 bg-white animate-in fade-in slide-in-from-top-1 duration-200">
+                    {/* Progress bar — click a step to move the order there.
+                        Kept at the top so the admin (or the delivery partner
+                        handing over) can update without scrolling. */}
+                    {order.status !== "Cancelled" && (() => {
+                      const current = FLOW.indexOf(order.status === "Processing" ? "Pending" : order.status);
+                      const locked = order.status === "Delivered";
+                      return (
+                        <div className="flex items-center mb-4 pb-4 border-b border-slate-100 overflow-x-auto">
+                          {FLOW.map((step, i) => {
+                            const done = i < current;
+                            const now = i === current;
+                            return (
+                              <div key={step} className="flex items-center flex-1 min-w-[84px] last:flex-none">
+                                <button
+                                  type="button"
+                                  disabled={locked || now}
+                                  onClick={() => handleStatusSelect(order, step)}
+                                  className="flex flex-col items-center gap-1 bg-transparent border-none p-0 cursor-pointer disabled:cursor-default"
+                                >
+                                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black border-2 transition-all ${
+                                    now  ? "bg-brand-600 text-white border-brand-600 ring-4 ring-brand-100" :
+                                    done ? "bg-emerald-500 text-white border-emerald-500" :
+                                           "bg-white text-slate-400 border-slate-200 hover:border-brand-300"
+                                  }`}>
+                                    {done ? "✓" : i + 1}
+                                  </span>
+                                  <span className={`text-[10px] font-bold whitespace-nowrap ${now ? "text-brand-700" : done ? "text-emerald-700" : "text-slate-400"}`}>
+                                    {step}
+                                  </span>
+                                </button>
+                                {i < FLOW.length - 1 && (
+                                  <span className={`flex-1 h-0.5 mx-1 mb-4 rounded ${done ? "bg-emerald-400" : "bg-slate-200"}`} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
                     {/* Full Order ID strip */}
                     <div className="flex justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-slate-100">
                       <div>

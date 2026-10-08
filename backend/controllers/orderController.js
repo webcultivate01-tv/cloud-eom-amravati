@@ -7,6 +7,8 @@ const { archiveOrderArtwork } = require("../config/imageArchive");
 const { ensureInvoiceNumber, isBillable } = require("./invoiceController");
 const { renderInvoiceBuffer, invoiceFileName } = require("../config/invoice");
 const { nextOrderNumber } = require("../models/Counter");
+const { computeOrderTotals } = require("../config/orderTotals");
+const { hasModule } = require("../middleware/adminMiddleware");
 
 const getRazorpay = () =>
   new Razorpay({
@@ -37,7 +39,6 @@ const createOrder = async (req, res) => {
     }
 
     // Build order items with current prices from DB
-    let totalPrice = 0;
     const orderItems = [];
     const codBlockers = []; // products that don't allow COD
 
@@ -63,13 +64,11 @@ const createOrder = async (req, res) => {
       // Track products that disallow COD — used after the loop
       if (product.allowCOD === false) codBlockers.push(product.name);
 
-      const lineTotal = product.price * item.quantity;
-      totalPrice += lineTotal;
-
       orderItems.push({
         product: product._id,
         name: product.name,
         price: product.price,
+        deliveryCharge: product.deliveryCharge || 0,
         quantity: item.quantity,
         size: item.size || "",
         uploadedImage: item.uploadedImage || "", // local /uploads URL from frontend upload
@@ -88,7 +87,7 @@ const createOrder = async (req, res) => {
       orderNumber: await nextOrderNumber(),
       items: orderItems,
       shippingAddress,
-      totalPrice,
+      ...computeOrderTotals(orderItems),
       customerNote,
       paymentMethod: "cod",
       paymentStatus: "pending",
@@ -139,8 +138,8 @@ const getOrderById = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Only the owner or an admin can view the order
-    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    // Only the owner, or staff holding the Orders module, can view the order
+    if (order.user._id.toString() !== req.user._id.toString() && !hasModule(req.user, "orders")) {
       return res.status(403).json({ message: "Not authorized to view this order" });
     }
 
@@ -156,7 +155,11 @@ const getOrderById = async (req, res) => {
    Delivered and cancelled orders leave that queue and live in their own
    tabs, so a finished order never pads the list an admin works from. */
 const ORDER_GROUPS = {
-  active:    ["Pending", "Processing", "Printing", "Shipped"],
+  active:    ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped"],
+  pending:   ["Pending", "Processing"],
+  printing:  ["Printing"],
+  ready:     ["Ready for Delivery"],
+  shipped:   ["Shipped"],
   delivered: ["Delivered"],
   cancelled: ["Cancelled"],
 };
@@ -284,7 +287,7 @@ const PAYMENT_COLLECTION_METHODS = ["cash", "upi", "card"];
 const updateOrderStatus = async (req, res) => {
   try {
     const { status, paymentCollectedVia } = req.body;
-    const validStatuses = ["Pending", "Processing", "Printing", "Shipped", "Delivered", "Cancelled"];
+    const validStatuses = ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped", "Delivered", "Cancelled"];
 
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
@@ -298,6 +301,13 @@ const updateOrderStatus = async (req, res) => {
     if (existing.cancelledBy === "user") {
       return res.status(403).json({
         message: "This order was cancelled by the customer and cannot be modified.",
+      });
+    }
+
+    // Delivery raises the numbered invoice, so a delivered order is final
+    if (existing.status === "Delivered") {
+      return res.status(403).json({
+        message: "This order is already delivered and its status can no longer be changed.",
       });
     }
 

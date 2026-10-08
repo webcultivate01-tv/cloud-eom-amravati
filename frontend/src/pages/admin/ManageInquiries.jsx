@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAllInquiries,
@@ -76,6 +78,17 @@ export default function ManageInquiries() {
   const [toDate, setToDate] = useState("");
 
   useEffect(() => { dispatch(fetchAllInquiries()); }, [dispatch]);
+
+  /* Arriving from the bell (?inquiry=<id>): open that enquiry's details. */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetId = searchParams.get("inquiry");
+  useEffect(() => {
+    if (!targetId) return;
+    const found = inquiries.find((q) => q._id === targetId);
+    if (!found) return;
+    setDetailInq(found);
+    setSearchParams({}, { replace: true });
+  }, [targetId, inquiries, setSearchParams]);
 
   /* Picking a preset fills the two date boxes, so the custom range always shows
      what is actually being filtered on rather than sitting empty behind it. */
@@ -577,7 +590,7 @@ function DetailBody({ inq, busy, onStatusChange, onNotesSave, onReply, onDelete 
 
       <div>
         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Message</p>
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-slate-700 text-sm leading-relaxed whitespace-pre-wrap break-words">
           {inq.message || <span className="text-slate-400">No message was included.</span>}
         </div>
       </div>
@@ -635,15 +648,25 @@ function Modal({ children, title, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  /* Lock page scroll behind the dialog so the dashboard doesn't shift/scroll */
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  /* Portalled to <body>: the page wrapper is animated (has a transform), which
+     would otherwise become the containing block for `fixed` and pull the overlay
+     into the dashboard layout instead of covering the viewport. */
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="admin-shell fixed inset-0 z-[100] flex items-center justify-center p-4"
       style={{ background: "rgba(15, 23, 42, 0.45)" }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
     >
-      <div className="admin-card w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+      <div className="admin-card w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden animate-fade-in-up">
         <div className="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
           <h2 className="text-base font-bold text-slate-800">{title}</h2>
           <button
@@ -656,7 +679,8 @@ function Modal({ children, title, onClose }) {
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -75,6 +75,7 @@ const BRAND = {
 
 const LOGO_DARK  = path.join(__dirname, "..", "assets", "logo.png");        // for light backgrounds
 const LOGO_WHITE = path.join(__dirname, "..", "assets", "logo-white.png");  // for the brand band
+const SIGNATURE  = path.join(__dirname, "..", "assets", "signature.png");   // founder signature on invoices
 
 module.exports = {
   COMPANY,
@@ -85,6 +86,7 @@ module.exports = {
   SGST_RATE,
   LOGO_DARK,
   LOGO_WHITE,
+  SIGNATURE,
   round2,
   splitGst,
 };

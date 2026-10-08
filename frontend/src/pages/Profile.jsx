@@ -78,7 +78,7 @@ export default function Profile() {
     { label: "Too short", color: "#dc4f49" },
     { label: "Weak", color: "#dc4f49" },
     { label: "Fair", color: "#d9971b" },
-    { label: "Good", color: "#0288cb" },
+    { label: "Good", color: "#0274ad" },
     { label: "Strong", color: "#0f9d70" },
     { label: "Excellent", color: "#0f9d70" },
   ][pwScore];
@@ -106,12 +106,12 @@ export default function Profile() {
 
         {/* ── Identity card ── */}
         <section className="relative rounded-3xl overflow-hidden mb-6 border border-slate-200/70 shadow-sm">
-          <div className="relative px-6 md:px-9 py-8 md:py-9" style={{ background: "#082c3e" }}>
+          <div className="relative px-6 md:px-9 py-8 md:py-9" style={{ background: "#072535" }}>
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "radial-gradient(circle at 12% 20%, rgba(6,114,167,0.55), transparent 58%), radial-gradient(circle at 90% 90%, rgba(41,163,220,0.28), transparent 55%)",
+                  "radial-gradient(circle at 12% 20%, rgba(5, 97, 142,0.55), transparent 58%), radial-gradient(circle at 90% 90%, rgba(41,163,220,0.28), transparent 55%)",
               }}
             />
             <div
@@ -129,14 +129,14 @@ export default function Profile() {
               <div className="relative shrink-0">
                 <div
                   className="w-[74px] h-[74px] rounded-2xl flex items-center justify-center text-white font-black text-[30px] leading-none ring-4 ring-white/15"
-                  style={{ background: "linear-gradient(140deg, #0288cb, #0a5b82)", boxShadow: "0 10px 28px rgba(2,136,203,0.42)" }}
+                  style={{ background: "linear-gradient(140deg, #0274ad, #094d6f)", boxShadow: "0 10px 28px rgba(2,136,203,0.42)" }}
                 >
                   {user?.name?.[0]?.toUpperCase() || "U"}
                 </div>
                 {user?.isAdmin && (
                   <span
                     className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "#0f9d70", boxShadow: "0 0 0 4px #082c3e" }}
+                    style={{ background: "#0f9d70", boxShadow: "0 0 0 4px #072535" }}
                     title="Administrator"
                   >
                     <BadgeCheck className="w-4 h-4 text-white" />

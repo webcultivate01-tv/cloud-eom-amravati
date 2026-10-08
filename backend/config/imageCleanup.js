@@ -9,6 +9,7 @@ const {
 const Product = require("../models/Product");
 const Category = require("../models/Category");
 const Event = require("../models/Event");
+const HeroSlide = require("../models/HeroSlide");
 const Replacement = require("../models/Replacement");
 const Order = require("../models/Order");
 
@@ -20,6 +21,7 @@ const IMAGE_REFERENCES = [
   { model: Product, fields: ["image", "images"] },
   { model: Category, fields: ["image"] },
   { model: Event, fields: ["image"] },
+  { model: HeroSlide, fields: ["image"] },
   { model: Replacement, fields: ["images"] },
   // Customer print artwork. Also covered by the hard folder guard below, but
   // checked anyway so an order can never lose its artwork to a cleanup pass.

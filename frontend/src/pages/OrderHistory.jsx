@@ -13,6 +13,7 @@ const STATUS_CLS = {
   Pending:    { badge: "bg-amber-50 text-amber-700 border-amber-200",     dot: "bg-amber-400" },
   Processing: { badge: "bg-blue-50 text-blue-700 border-blue-200",        dot: "bg-blue-400" },
   Printing:   { badge: "bg-purple-50 text-purple-700 border-purple-200",  dot: "bg-purple-400" },
+  "Ready for Delivery": { badge: "bg-teal-50 text-teal-700 border-teal-200", dot: "bg-teal-500" },
   Shipped:    { badge: "bg-brand-50 text-brand-700 border-brand-200",     dot: "bg-brand-500" },
   Delivered:  { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
   Cancelled:  { badge: "bg-red-50 text-red-700 border-red-200",           dot: "bg-red-500" },
@@ -22,12 +23,12 @@ const PAY_CLS = {
   refunded: "bg-red-50 text-red-700 border-red-200",
   pending:  "bg-amber-50 text-amber-700 border-amber-200",
 };
-const STATUS_ORDER = ["Pending", "Processing", "Printing", "Shipped", "Delivered"];
+const STATUS_ORDER = ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped", "Delivered"];
 
 /* Filter chips across the top — "All" plus the states worth separating out */
 const FILTERS = [
   { key: "all", label: "All" },
-  { key: "active", label: "In Progress", match: (o) => ["Pending", "Processing", "Printing", "Shipped"].includes(o.status) },
+  { key: "active", label: "In Progress", match: (o) => ["Pending", "Processing", "Printing", "Ready for Delivery", "Shipped"].includes(o.status) },
   { key: "delivered", label: "Delivered", match: (o) => o.status === "Delivered" },
   { key: "cancelled", label: "Cancelled", match: (o) => o.status === "Cancelled" },
 ];
@@ -265,7 +266,7 @@ export default function OrderHistory() {
                         {order.paymentMethod === "razorpay" ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
                         {order.paymentStatus === "paid" ? "Paid" : order.paymentStatus === "refunded" ? "Refunded" : "Pending"}
                       </span>
-                      <span className="font-black text-slate-900 text-[15px] ml-1 tracking-tight">₹{order.totalPrice.toLocaleString()}</span>
+                      <span className="font-black text-slate-900 text-[15px] ml-1 tracking-tight" title={order.deliveryCharge > 0 ? `Product ₹${(order.totalPrice - order.deliveryCharge).toLocaleString()} + delivery ₹${order.deliveryCharge.toLocaleString()}` : undefined}>₹{order.totalPrice.toLocaleString()}</span>
                     </div>
                   </div>
 

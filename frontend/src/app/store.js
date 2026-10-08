@@ -11,6 +11,7 @@ import favoritesReducer from "../features/favorites/favoritesSlice";
 import inquiryReducer from "../features/inquiry/inquirySlice";
 import reviewReducer from "../features/review/reviewSlice";
 import replacementReducer from "../features/replacement/replacementSlice";
+import employeeReducer from "../features/employees/employeeSlice";
 
 const store = configureStore({
   reducer: {
@@ -26,6 +27,7 @@ const store = configureStore({
     inquiry: inquiryReducer,
     review:       reviewReducer,
     replacement:  replacementReducer,
+    employees:    employeeReducer,
   },
 });
 

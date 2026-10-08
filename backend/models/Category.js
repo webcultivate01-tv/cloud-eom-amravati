@@ -13,7 +13,9 @@ const categorySchema = new mongoose.Schema({
   description:   { type: String, default: "", trim: true },
   icon:          { type: String, default: "🏷️" },
   isActive:      { type: Boolean, default: true },
-  sortOrder:     { type: Number, default: 0 },
+  // Whether this category appears in the website's top navigation bar
+  showInNavbar:  { type: Boolean, default: true },
+  sortOrder:    { type: Number, default: 0 },
   subcategories: [subcategorySchema],
 }, { timestamps: true });
 

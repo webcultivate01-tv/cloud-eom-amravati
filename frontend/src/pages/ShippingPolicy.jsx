@@ -45,12 +45,12 @@ export default function ShippingPolicy() {
 
           <section>
             <h2 className="text-base font-bold text-gray-800 mb-2">6. Damaged in Transit</h2>
-            <p>If your order arrives damaged, please take photos immediately and contact us within <span className="font-semibold text-gray-700">48 hours</span> of delivery at <span className="text-[#0672a7] font-semibold">info@cloudgraphics.in</span>. We will arrange a replacement or refund after verification.</p>
+            <p>If your order arrives damaged, please take photos immediately and contact us within <span className="font-semibold text-gray-700">48 hours</span> of delivery at <span className="text-[#05618e] font-semibold">info@cloudgraphics.in</span>. We will arrange a replacement or refund after verification.</p>
           </section>
 
           <section>
             <h2 className="text-base font-bold text-gray-800 mb-2">7. Contact Us</h2>
-            <p>For shipping-related queries, contact us at <span className="text-[#0672a7] font-semibold">info@cloudgraphics.in</span> or call <span className="font-semibold">+91 93076 41746</span>.</p>
+            <p>For shipping-related queries, contact us at <span className="text-[#05618e] font-semibold">info@cloudgraphics.in</span> or call <span className="font-semibold">+91 93076 41746</span>.</p>
           </section>
 
         </RevealGroup>
