@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
@@ -112,7 +113,7 @@ export default function ManageInquiries() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete the enquiry from "${name}"? This cannot be undone.`)) return;
+    if (!(await confirmDialog(`Delete the enquiry from "${name}"? This cannot be undone.`))) return;
     const result = await dispatch(deleteInquiry(id));
     if (!result.error) toast.success("Enquiry deleted");
     else toast.error(result.payload);

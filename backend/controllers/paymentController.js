@@ -5,7 +5,7 @@ const Product = require("../models/Product");
 const User = require("../models/User");
 const { sendOrderConfirmation } = require("../config/mailer");
 const { nextOrderNumber } = require("../models/Counter");
-const { computeOrderTotals } = require("../config/orderTotals");
+const { computeOrderTotals, findDeliveryZone } = require("../config/orderTotals");
 const { ensureInvoiceNumber, isBillable } = require("./invoiceController");
 const { renderInvoiceBuffer, invoiceFileName } = require("../config/invoice");
 
@@ -102,7 +102,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
       orderNumber: await nextOrderNumber(),
       items: orderItems,
       shippingAddress,
-      ...computeOrderTotals(orderItems),
+      ...computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode)),
       customerNote: customerNote || "",
       paymentMethod: "razorpay",
       paymentStatus: "paid",

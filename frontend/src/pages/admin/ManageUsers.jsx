@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAllUsers, toggleBlockUser, deleteUser } from "../../features/users/userSlice";
@@ -26,14 +27,14 @@ export default function ManageUsers() {
 
   const handleToggleBlock = async (user) => {
     const action = user.isBlocked ? "Unblock" : "Block";
-    if (!window.confirm(`${action} ${user.name}?`)) return;
+    if (!(await confirmDialog(`${action} ${user.name}?`))) return;
     const result = await dispatch(toggleBlockUser(user._id));
     if (!result.error) toast.success(`User ${action.toLowerCase()}ed successfully`);
     else toast.error(result.payload);
   };
 
   const handleDelete = async (user) => {
-    if (!window.confirm(`Permanently delete "${user.name}"? This cannot be undone.`)) return;
+    if (!(await confirmDialog(`Permanently delete "${user.name}"? This cannot be undone.`))) return;
     const result = await dispatch(deleteUser(user._id));
     if (!result.error) toast.success("User deleted");
     else toast.error(result.payload);

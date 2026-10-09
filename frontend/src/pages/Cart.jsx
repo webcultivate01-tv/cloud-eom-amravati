@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { removeFromCart, updateQuantity, selectCartTotal, selectCartDelivery, makeCartKey } from "../features/cart/cartSlice";
+import { removeFromCart, updateQuantity, selectCartTotal, makeCartKey } from "../features/cart/cartSlice";
 import { useNavigate, Link } from "react-router-dom";
 import { ShoppingCart, AlertCircle, CheckCircle2, Minus, Plus, X, ArrowRight, ArrowLeft } from "lucide-react";
 
@@ -8,7 +8,6 @@ export default function Cart() {
   const navigate = useNavigate();
   const { items } = useSelector((s) => s.cart);
   const total = useSelector(selectCartTotal);
-  const delivery = useSelector(selectCartDelivery);
   const { user } = useSelector((s) => s.auth);
 
   if (items.length === 0) return (
@@ -152,18 +151,19 @@ export default function Cart() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-700 font-medium text-[13px]">Delivery charges</span>
-                  {delivery > 0
-                    ? <span className="font-sans text-slate-900 font-extrabold text-[14px] tabular-nums">₹{delivery.toLocaleString()}</span>
-                    : <span className="text-emerald-800 font-extrabold text-[11.5px] uppercase tracking-[0.12em]">Free</span>}
+                  <span className="text-slate-600 font-semibold text-[12px] text-right">Depends on PIN code</span>
                 </div>
               </div>
 
               <div className="border-t border-slate-300 mt-4 pt-4 flex items-baseline justify-between gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-900">Total</span>
                 <span className="font-sans text-slate-900 text-[22px] font-extrabold leading-none tracking-normal tabular-nums">
-                  ₹{(total + delivery).toLocaleString()}
+                  ₹{total.toLocaleString()}
                 </span>
               </div>
+              <p className="text-[11px] text-slate-500 font-medium mt-2 mb-0 text-right">
+                + delivery, calculated from your PIN code at checkout
+              </p>
 
               <button onClick={() => user ? navigate("/checkout") : navigate("/login")}
                 className="w-full inline-flex items-center justify-center gap-2 mt-5 py-3 rounded-full bg-brand-700 text-white border-none text-[11.5px] font-bold uppercase tracking-[0.14em] cursor-pointer transition-all duration-200 hover:bg-brand-800 hover:shadow-[0_10px_24px_-12px_rgba(10, 91, 130,0.7)]">

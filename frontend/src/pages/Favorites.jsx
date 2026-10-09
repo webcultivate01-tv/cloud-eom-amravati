@@ -1,3 +1,4 @@
+import { confirmDialog } from "../components/ConfirmDialog";
 import { useDispatch, useSelector } from "react-redux";
 import { clearFavorites } from "../features/favorites/favoritesSlice";
 import ProductCard from "../components/ProductCard";
@@ -9,8 +10,8 @@ export default function Favorites() {
   const dispatch = useDispatch();
   const { items } = useSelector((s) => s.favorites);
 
-  const handleClearAll = () => {
-    if (!window.confirm("Remove all favourites?")) return;
+  const handleClearAll = async () => {
+    if (!(await confirmDialog("Remove all favourites?"))) return;
     dispatch(clearFavorites());
     toast.dismiss(); toast.success("Favourites cleared");
   };

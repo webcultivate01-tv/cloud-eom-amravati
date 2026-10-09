@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { submitInquiry } from "../features/inquiry/inquirySlice";
 import { toast } from "react-toastify";
 import Reveal, { RevealGroup } from "../components/Reveal";
+import DropdownSelect from "../components/DropdownSelect";
 
 const EMPTY = { name: "", email: "", phone: "", subject: "", message: "" };
 const SUBJECTS = [
@@ -54,12 +55,6 @@ const IconCheck = () => (
   <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
     <polyline points="22 4 12 14.01 9 11.01"/>
-  </svg>
-);
-
-const IconChevron = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9"/>
   </svg>
 );
 
@@ -249,17 +244,11 @@ export default function Contact() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-gray-600 tracking-wide">Subject <span className="text-[#05618e]">*</span></label>
                     <div className="relative">
-                      <select
+                      <DropdownSelect
                         name="subject" value={form.subject} onChange={handleChange}
-                        className={`${inputCls(errors.subject)} pr-10`}
-                        style={{ WebkitAppearance: "none" }}
-                      >
-                        <option value="">— Select a subject —</option>
-                        {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                        <IconChevron />
-                      </div>
+                        className={inputCls(errors.subject)}
+                        placeholder="— Select a subject —" options={SUBJECTS}
+                      />
                     </div>
                     {errors.subject && <span className="text-[#05618e] text-xs font-semibold">{errors.subject}</span>}
                   </div>

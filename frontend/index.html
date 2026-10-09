@@ -62,6 +62,10 @@
     </script>
   </head>
   <body>
+    <style>
+      /* Crawler fallback text stays in the HTML but is never painted; React replaces it on load. */
+      .seo-fallback { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    </style>
     <div id="root"><!--SEO:ROOT--></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

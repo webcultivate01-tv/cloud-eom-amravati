@@ -6,6 +6,12 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
+  /* Prevent page-level horizontal scrolling (clip keeps sticky headers working) */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  @supports (overflow: clip) {
+    html, body { overflow-x: clip; }
+  }
+
   body {
     font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;

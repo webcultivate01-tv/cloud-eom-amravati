@@ -18,7 +18,8 @@ const MODULES = [
 
   { key: "products",     label: "Products",     group: "Catalog",   desc: "Add, edit and delete products" },
   { key: "categories",   label: "Categories",   group: "Catalog",   desc: "Categories and subcategories" },
-  { key: "hero",         label: "Hero Section", group: "Catalog",   desc: "Homepage slider images" },
+  { key: "delivery",     label: "Delivery Charges", group: "Catalog", desc: "Pincode-wise delivery rates" },
+  { key: "hero",        label: "Hero Section", group: "Catalog",   desc: "Homepage slider images" },
   { key: "events",       label: "Events",       group: "Catalog",   desc: "Offer / announcement popups" },
 
   { key: "users",        label: "Users",        group: "Customers", desc: "Customer accounts, block / delete" },

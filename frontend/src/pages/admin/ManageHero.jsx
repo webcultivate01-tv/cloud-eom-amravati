@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ArrowUp, ArrowDown } from "lucide-react";
@@ -81,7 +82,7 @@ export default function ManageHero() {
   };
 
   const handleDelete = async (s) => {
-    if (!window.confirm(`Delete this slide${s.title ? ` "${s.title.replace(/\n/g, " ")}"` : ""}?`)) return;
+    if (!(await confirmDialog(`Delete this slide${s.title ? ` "${s.title.replace(/\n/g, " ")}"` : ""}?`))) return;
     try {
       await api.delete(`/hero/${s._id}`);
       toast.success("Slide deleted");

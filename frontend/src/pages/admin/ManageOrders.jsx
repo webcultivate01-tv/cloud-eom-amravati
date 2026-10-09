@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
@@ -206,7 +207,7 @@ export default function ManageOrders() {
   };
 
   const handleRefund = async (orderId) => {
-    if (!window.confirm("Mark this order as refunded and cancel it?")) return;
+    if (!(await confirmDialog("Mark this order as refunded and cancel it?"))) return;
     setRefunding(orderId);
     const result = await dispatch(markOrderRefunded(orderId));
     setRefunding(null);
@@ -230,7 +231,7 @@ export default function ManageOrders() {
   };
 
   const handleCancelShipment = async (orderId) => {
-    if (!window.confirm("Cancel this shipment on Shiprocket? The order will go back to Processing status.")) return;
+    if (!(await confirmDialog("Cancel this shipment on Shiprocket? The order will go back to Processing status."))) return;
     setCancellingShipment(orderId);
     try {
       const { data } = await api.post(`/shipment/${orderId}/cancel`);
