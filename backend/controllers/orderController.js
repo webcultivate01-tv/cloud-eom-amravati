@@ -7,7 +7,7 @@ const { archiveOrderArtwork } = require("../config/imageArchive");
 const { ensureInvoiceNumber, isBillable } = require("./invoiceController");
 const { renderInvoiceBuffer, invoiceFileName } = require("../config/invoice");
 const { nextOrderNumber } = require("../models/Counter");
-const { computeOrderTotals } = require("../config/orderTotals");
+const { computeOrderTotals, findDeliveryZone } = require("../config/orderTotals");
 const { hasModule } = require("../middleware/adminMiddleware");
 
 const getRazorpay = () =>
@@ -87,7 +87,7 @@ const createOrder = async (req, res) => {
       orderNumber: await nextOrderNumber(),
       items: orderItems,
       shippingAddress,
-      ...computeOrderTotals(orderItems),
+      ...computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode)),
       customerNote,
       paymentMethod: "cod",
       paymentStatus: "pending",

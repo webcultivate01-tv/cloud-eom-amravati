@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -41,7 +42,7 @@ export default function ManageReviews() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete review by "${name}"? This cannot be undone.`)) return;
+    if (!(await confirmDialog(`Delete review by "${name}"? This cannot be undone.`))) return;
     const result = await dispatch(deleteReview(id));
     if (!result.error) toast.success("Review deleted");
     else toast.error(result.payload);

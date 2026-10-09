@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -58,7 +59,7 @@ export default function ManageAdmins() {
   };
 
   const handleRemove = async (admin) => {
-    if (!window.confirm(`Remove "${admin.name}" from admins? They will become a regular user.`)) return;
+    if (!(await confirmDialog(`Remove "${admin.name}" from admins? They will become a regular user.`))) return;
     const result = await dispatch(removeAdmin(admin._id));
     if (!result.error) toast.success(`${admin.name} removed from admin`);
     else toast.error(result.payload);

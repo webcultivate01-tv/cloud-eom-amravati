@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -62,7 +63,7 @@ export default function ManageEvents() {
   };
 
   const handleDelete = async (id, title) => {
-    if (!window.confirm(`Delete event "${title}"?`)) return;
+    if (!(await confirmDialog(`Delete event "${title}"?`))) return;
     const result = await dispatch(deleteEvent(id));
     if (!result.error) toast.success("Event deleted");
     else toast.error(result.payload);

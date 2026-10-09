@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -78,7 +79,7 @@ export default function ManageReplacements() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete replacement request by "${name}"?`)) return;
+    if (!(await confirmDialog(`Delete replacement request by "${name}"?`))) return;
     const result = await dispatch(deleteReplacement(id));
     if (!result.error) { toast.success("Deleted"); if (detailItem?._id === id) setDetailItem(null); }
     else toast.error(result.payload);

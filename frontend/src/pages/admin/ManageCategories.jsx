@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -59,7 +60,7 @@ export default function ManageCategories() {
   };
 
   const handleDelete = async (cat) => {
-    if (!window.confirm(`Delete "${cat.name}" and all its subcategories?`)) return;
+    if (!(await confirmDialog(`Delete "${cat.name}" and all its subcategories?`))) return;
     const result = await dispatch(deleteCategory(cat._id));
     if (!result.error) toast.success("Category deleted");
     else toast.error(result.payload);
@@ -96,7 +97,7 @@ export default function ManageCategories() {
   };
 
   const handleDeleteSub = async (catId, sub) => {
-    if (!window.confirm(`Delete subcategory "${sub.name}"?`)) return;
+    if (!(await confirmDialog(`Delete subcategory "${sub.name}"?`))) return;
     const result = await dispatch(deleteSubcategory({ catId, subId: sub._id }));
     if (!result.error) toast.success("Subcategory deleted");
     else toast.error(result.payload);

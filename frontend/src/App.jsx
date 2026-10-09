@@ -46,6 +46,7 @@ const ManageEmployees = lazy(() => import("./pages/admin/ManageEmployees"));
 const ManageEvents = lazy(() => import("./pages/admin/ManageEvents"));
 const ManageCategories = lazy(() => import("./pages/admin/ManageCategories"));
 const ManageHero = lazy(() => import("./pages/admin/ManageHero"));
+const ManageDelivery = lazy(() => import("./pages/admin/ManageDelivery"));
 const ManageInquiries = lazy(() => import("./pages/admin/ManageInquiries"));
 const ManageReviews = lazy(() => import("./pages/admin/ManageReviews"));
 const ManageReplacements = lazy(() => import("./pages/admin/ManageReplacements"));
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="/admin/events"      element={<AdminPage><ManageEvents /></AdminPage>} />
         <Route path="/admin/categories"  element={<AdminPage><ManageCategories /></AdminPage>} />
         <Route path="/admin/hero"        element={<AdminPage><ManageHero /></AdminPage>} />
+        <Route path="/admin/delivery"    element={<AdminPage><ManageDelivery /></AdminPage>} />
         <Route path="/admin/inquiries"   element={<AdminPage><ManageInquiries /></AdminPage>} />
         <Route path="/admin/reviews"       element={<AdminPage><ManageReviews /></AdminPage>} />
         <Route path="/admin/replacements" element={<AdminPage><ManageReplacements /></AdminPage>} />
@@ -121,6 +123,7 @@ export default function App() {
         <Route path="/employee/products"     element={<EmployeePage module="products"><ManageProducts /></EmployeePage>} />
         <Route path="/employee/categories"   element={<EmployeePage module="categories"><ManageCategories /></EmployeePage>} />
         <Route path="/employee/hero"         element={<EmployeePage module="hero"><ManageHero /></EmployeePage>} />
+        <Route path="/employee/delivery"     element={<EmployeePage module="delivery"><ManageDelivery /></EmployeePage>} />
         <Route path="/employee/events"       element={<EmployeePage module="events"><ManageEvents /></EmployeePage>} />
         <Route path="/employee/users"        element={<EmployeePage module="users"><ManageUsers /></EmployeePage>} />
         <Route path="/employee/inquiries"    element={<EmployeePage module="inquiries"><ManageInquiries /></EmployeePage>} />

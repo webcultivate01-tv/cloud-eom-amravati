@@ -1,3 +1,4 @@
+import { confirmDialog } from "../../components/ConfirmDialog";
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAllPayments, fetchPaymentStats, markOrderRefunded } from "../../features/payment/paymentSlice";
@@ -82,7 +83,7 @@ export default function ManagePayments() {
   };
 
   const handleRefund = async (orderId) => {
-    if (!window.confirm("Mark this payment as refunded? The order will also be cancelled.")) return;
+    if (!(await confirmDialog("Mark this payment as refunded? The order will also be cancelled."))) return;
     setRefunding(orderId);
     const result = await dispatch(markOrderRefunded(orderId));
     setRefunding(null);

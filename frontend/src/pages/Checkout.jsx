@@ -9,6 +9,7 @@ import api from "../utils/api";
 import { downloadFile } from "../utils/download";
 import { loadRazorpay } from "../utils/loadRazorpay";
 import { validateImageFile } from "../utils/uploadLimits";
+import DropdownSelect from "../components/DropdownSelect";
 import {
   Package, MapPin, Palette, CheckCircle2, CreditCard, Banknote, ShieldCheck, Home, Briefcase,
   Image as ImageIcon, Upload, AlertTriangle, Ban, Info, ChevronRight, ChevronLeft, Check,
@@ -44,7 +45,7 @@ const SectionHead = ({ Icon, title, sub }) => (
     </span>
     <div className="min-w-0">
       <h2 className="text-[15px] font-black text-slate-900 m-0 leading-tight tracking-tight">{title}</h2>
-      <p className="text-[11.5px] text-slate-400 font-medium m-0 mt-0.5">{sub}</p>
+      <p className="text-[11.5px] text-slate-500 font-medium m-0 mt-0.5">{sub}</p>
     </div>
   </div>
 );
@@ -54,8 +55,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items } = useSelector((s) => s.cart);
   const subtotal = useSelector(selectCartTotal);
-  const delivery = useSelector(selectCartDelivery);
-  const total = subtotal + delivery; // everything the customer pays: product cost + delivery
+  const productDelivery = useSelector(selectCartDelivery);
   const { loading: orderLoading, success: orderSuccess, error: orderError, createdOrder: codCreatedOrder } = useSelector((s) => s.orders);
   const { loading: payLoading, success: paySuccess, error: payError, createdOrder: payCreatedOrder } = useSelector((s) => s.payment);
   const { user } = useSelector((s) => s.auth);
@@ -69,6 +69,28 @@ export default function Checkout() {
   const [placedOrder, setPlacedOrder] = useState(null);
   const [billBusy, setBillBusy] = useState(false);
   const loading = orderLoading || payLoading;
+
+  /* The admin's pincode rate for the delivery address, if the pincode has one.
+     Without it the products' own per-unit charges apply. The server re-prices
+     the order itself, so this only drives what the customer sees and pays. */
+  const [quote, setQuote] = useState(null); // { pincode, found, charge, chargeType }
+  useEffect(() => {
+    if (!/^\d{6}$/.test(shipping.pincode)) return;
+    let cancelled = false;
+    api.get("/delivery/quote", { params: { pincode: shipping.pincode } })
+      .then(({ data }) => { if (!cancelled) setQuote({ ...data, pincode: shipping.pincode }); })
+      .catch(() => { if (!cancelled) setQuote(null); });
+    return () => { cancelled = true; };
+  }, [shipping.pincode]);
+  // Ignore a quote fetched for a pincode the customer has since changed
+  const zone = quote?.found && quote.pincode === shipping.pincode ? quote : null;
+
+  const units = items.reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+  const delivery = zone
+    ? (zone.chargeType === "per_unit" ? zone.charge * units : zone.charge)
+    : productDelivery;
+  const pinEntered = /^\d{6}$/.test(shipping.pincode); // until then the delivery charge is unknown
+  const total = subtotal + delivery; // everything the customer pays: product cost + delivery
 
   useEffect(() => {
     if (orderSuccess || paySuccess) {
@@ -197,25 +219,25 @@ export default function Checkout() {
           <h2 className="text-2xl font-black text-slate-900 m-0 mb-1.5">
             {isCOD ? "Order Placed!" : "Payment Successful!"}
           </h2>
-          <p className="text-slate-500 text-[13.5px] font-medium m-0 mb-5">
+          <p className="text-slate-600 text-[13.5px] font-medium m-0 mb-5">
             {isCOD ? "Your order has been placed. Pay in cash on delivery." : "Your payment was confirmed and your order is placed."}
           </p>
 
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-5 text-left flex flex-col gap-2.5">
             {shortId && (
               <div className="flex justify-between text-[13px]">
-                <span className="text-slate-500 font-semibold">Order ID</span>
+                <span className="text-slate-600 font-semibold">Order ID</span>
                 <span className="text-slate-900 font-black tracking-wider">#{shortId}</span>
               </div>
             )}
             {placedOrder.totalPrice != null && (
               <div className="flex justify-between text-[13px]">
-                <span className="text-slate-500 font-semibold">{isCOD ? "Pay on delivery" : "Amount paid"}</span>
+                <span className="text-slate-600 font-semibold">{isCOD ? "Pay on delivery" : "Amount paid"}</span>
                 <span className="text-slate-900 font-black">₹{placedOrder.totalPrice.toLocaleString("en-IN")}</span>
               </div>
             )}
             <div className="flex justify-between text-[13px]">
-              <span className="text-slate-500 font-semibold">Payment method</span>
+              <span className="text-slate-600 font-semibold">Payment method</span>
               <span className="text-slate-900 font-bold">{isCOD ? "Cash on Delivery" : "Online Payment"}</span>
             </div>
           </div>
@@ -246,16 +268,16 @@ export default function Checkout() {
         <Package className="w-10 h-10 text-slate-300" />
       </div>
       <h2 className="text-2xl font-black text-slate-900 mb-2">Checkout Unavailable</h2>
-      <p className="text-slate-500 mb-8 max-w-md">Your cart is empty. Please add some products to your cart before proceeding to checkout.</p>
+      <p className="text-slate-600 mb-8 max-w-md">Your cart is empty. Please add some products to your cart before proceeding to checkout.</p>
       <Link to="/products" className="bg-brand-600 text-white px-8 py-3.5 rounded-xl font-bold text-sm no-underline hover:bg-brand-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">Shop Now</Link>
     </div>}
     </>
   );
 
   const inputCls =
-    "w-full px-4 py-3 border border-slate-200 rounded-xl text-[13.5px] bg-white text-slate-800 placeholder-slate-400 " +
+    "w-full px-4 py-3 border border-slate-200 rounded-xl text-[13.5px] bg-white text-slate-800 placeholder-slate-600 placeholder:opacity-100 " +
     "outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-600/10 transition-all box-border font-[inherit]";
-  const labelCls = "block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2";
+  const labelCls = "block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2";
   const cardCls = "bg-white rounded-2xl border border-slate-200/70 shadow-sm overflow-hidden";
   const backBtn = "inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-xl font-bold text-[13.5px] cursor-pointer hover:bg-slate-50 hover:border-slate-300 transition-all";
   const nextBtn = "inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-7 py-3 rounded-xl font-bold text-[13.5px] border-none cursor-pointer transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5";
@@ -271,7 +293,7 @@ export default function Checkout() {
             <h1 className="font-display text-[20px] md:text-[24px] font-black text-slate-900 tracking-[-0.02em] leading-none m-0">
               Checkout
             </h1>
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
               {items.length} {items.length === 1 ? "item" : "items"}
             </span>
           </div>
@@ -279,7 +301,7 @@ export default function Checkout() {
             <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-600">
               <Lock className="w-3.5 h-3.5" /> Secure
             </span>
-            <Link to="/cart" className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 no-underline hover:text-brand-700 transition-colors">
+            <Link to="/cart" className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 no-underline hover:text-brand-700 transition-colors">
               <ChevronLeft className="w-3.5 h-3.5" /> Cart
             </Link>
           </div>
@@ -310,16 +332,16 @@ export default function Checkout() {
                           ? "bg-brand-600 text-white shadow-md shadow-brand-600/25"
                           : current
                             ? "bg-white text-brand-700 ring-2 ring-brand-600 shadow-sm"
-                            : "bg-slate-100 text-slate-400"
+                            : "bg-slate-100 text-slate-500"
                       }`}
                     >
                       {done ? <Check className="w-[18px] h-[18px]" /> : <Icon className="w-[17px] h-[17px]" />}
                     </span>
                     <span className="hidden md:block min-w-0">
-                      <span className={`block text-[13px] font-bold leading-tight truncate ${current || done ? "text-slate-900" : "text-slate-400"}`}>
+                      <span className={`block text-[13px] font-bold leading-tight truncate ${current || done ? "text-slate-900" : "text-slate-500"}`}>
                         {label}
                       </span>
-                      <span className={`block text-[11px] font-medium leading-tight mt-0.5 truncate ${current ? "text-brand-600" : "text-slate-400"}`}>
+                      <span className={`block text-[11px] font-medium leading-tight mt-0.5 truncate ${current ? "text-brand-600" : "text-slate-500"}`}>
                         {caption}
                       </span>
                     </span>
@@ -343,7 +365,7 @@ export default function Checkout() {
             <p className="text-[13px] font-black text-slate-900 m-0 leading-tight">
               Step {stepIndex + 1} of {steps.length} · {steps[stepIndex].label}
             </p>
-            <p className="text-[11.5px] text-slate-400 font-medium m-0 mt-0.5">{steps[stepIndex].caption}</p>
+            <p className="text-[11.5px] text-slate-500 font-medium m-0 mt-0.5">{steps[stepIndex].caption}</p>
           </div>
         </nav>
 
@@ -390,11 +412,11 @@ export default function Checkout() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                     <div>
-                      <label className={labelCls}>Address Line 2 <span className="normal-case font-medium text-slate-400">(optional)</span></label>
+                      <label className={labelCls}>Address Line 2 <span className="normal-case font-medium text-slate-500">(optional)</span></label>
                       <input className={inputCls} placeholder="e.g. Opposite Bus Stand" value={shipping.addressLine2} onChange={(e) => setShipping({ ...shipping, addressLine2: e.target.value })} />
                     </div>
                     <div>
-                      <label className={labelCls}>Landmark <span className="normal-case font-medium text-slate-400">(optional)</span></label>
+                      <label className={labelCls}>Landmark <span className="normal-case font-medium text-slate-500">(optional)</span></label>
                       <input className={inputCls} placeholder="e.g. Near City Mall" value={shipping.landmark} onChange={(e) => setShipping({ ...shipping, landmark: e.target.value })} />
                     </div>
                   </div>
@@ -406,20 +428,25 @@ export default function Checkout() {
                     </div>
                     <div>
                       <label className={labelCls}>Pincode *</label>
+                      {!zone && <p className="text-[11px] text-slate-500 font-medium m-0 mb-1">Delivery charges depend on your PIN code</p>}
                       <input className={inputCls} placeholder="6-digit pincode" inputMode="numeric" value={shipping.pincode} onChange={(e) => setShipping({ ...shipping, pincode: e.target.value.replace(/\D/g, "") })} maxLength={6} />
+                      {zone && (
+                        <p className="text-[11.5px] font-semibold text-emerald-700 mt-1.5 m-0">
+                          {zone.charge > 0
+                            ? `Delivery to ${shipping.pincode}: ₹${zone.charge.toLocaleString()} ${zone.chargeType === "per_unit" ? "per item" : "per order"}`
+                            : `Free delivery to ${shipping.pincode}`}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="mb-5">
                     <label className={labelCls}>State *</label>
-                    <select className={inputCls} value={shipping.state} onChange={(e) => setShipping({ ...shipping, state: e.target.value })}>
-                      <option value="">— Select State —</option>
-                      {INDIAN_STATES.map((st) => <option key={st} value={st}>{st}</option>)}
-                    </select>
+                    <DropdownSelect className={inputCls} value={shipping.state} placeholder="— Select State —" options={INDIAN_STATES} onChange={(e) => setShipping({ ...shipping, state: e.target.value })} />
                   </div>
 
                   <div>
-                    <label className={labelCls}>Order Note <span className="normal-case font-medium text-slate-400">(optional)</span></label>
+                    <label className={labelCls}>Order Note <span className="normal-case font-medium text-slate-500">(optional)</span></label>
                     <textarea className={`${inputCls} h-24 resize-y`} placeholder="Special instructions for delivery..." value={note} onChange={(e) => setNote(e.target.value)} />
                   </div>
                 </div>
@@ -475,7 +502,7 @@ export default function Checkout() {
                                 {item.size && <span className="bg-white text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{item.size}</span>}
                                 {item.requiresCustomImage && <span className="bg-brand-50 text-brand-700 border border-brand-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Required</span>}
                               </p>
-                              <p className="text-slate-400 text-[11.5px] font-semibold">Qty: {item.quantity}</p>
+                              <p className="text-slate-500 text-[11.5px] font-semibold">Qty: {item.quantity}</p>
                             </div>
                           </div>
 
@@ -511,7 +538,7 @@ export default function Checkout() {
                                 </div>
                               </div>
                             ) : (
-                              <span className="inline-block bg-white border border-slate-200 px-4 py-2 rounded-lg text-slate-400 text-[11.5px] font-bold text-center">
+                              <span className="inline-block bg-white border border-slate-200 px-4 py-2 rounded-lg text-slate-500 text-[11.5px] font-bold text-center">
                                 No design needed
                               </span>
                             )}
@@ -555,7 +582,7 @@ export default function Checkout() {
                   {/* Address */}
                   <div>
                     <div className="flex items-center justify-between gap-3 mb-2.5">
-                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest m-0 flex items-center gap-1.5">
+                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest m-0 flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5" /> Delivering To
                       </h3>
                       <button onClick={() => setStep(1)} className="inline-flex items-center gap-1 text-[11.5px] font-bold text-brand-600 hover:text-brand-700 bg-transparent border-none cursor-pointer p-0 transition-colors">
@@ -568,7 +595,7 @@ export default function Checkout() {
                         {shipping.addressType}
                       </span>
                       <p className="font-bold text-slate-900 text-[14.5px] mb-1 m-0">{shipping.fullName}</p>
-                      <p className="text-slate-400 text-[12.5px] mb-2 font-semibold m-0">{shipping.phone}</p>
+                      <p className="text-slate-500 text-[12.5px] mb-2 font-semibold m-0">{shipping.phone}</p>
                       <p className="text-slate-600 text-[13px] leading-relaxed m-0">
                         {shipping.address}{shipping.addressLine2 ? ", " + shipping.addressLine2 : ""}{shipping.landmark ? `, Near: ${shipping.landmark}` : ""}
                         <br />{shipping.city}, {shipping.state} – {shipping.pincode}
@@ -579,7 +606,7 @@ export default function Checkout() {
                   {/* Items */}
                   <div>
                     <div className="flex items-center justify-between gap-3 mb-2.5">
-                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest m-0 flex items-center gap-1.5">
+                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest m-0 flex items-center gap-1.5">
                         <Package className="w-3.5 h-3.5" /> Items ({items.length})
                       </h3>
                       {hasDesigns && (
@@ -595,7 +622,7 @@ export default function Checkout() {
                             className="w-12 h-12 object-cover rounded-lg bg-slate-50 border border-slate-100 shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="text-slate-800 font-bold text-[13.5px] m-0 leading-tight truncate">{item.name}</p>
-                            <p className="text-slate-400 text-[11.5px] font-semibold mt-1 m-0 flex items-center gap-2 flex-wrap">
+                            <p className="text-slate-500 text-[11.5px] font-semibold mt-1 m-0 flex items-center gap-2 flex-wrap">
                               Qty {item.quantity}
                               {item.size && <span className="bg-brand-50 text-brand-700 border border-brand-100 text-[10px] px-1.5 py-0.5 rounded uppercase">{item.size}</span>}
                               {item.uploadedImage && <span className="text-emerald-600 inline-flex items-center gap-1"><Check className="w-3 h-3" /> design attached</span>}
@@ -609,7 +636,7 @@ export default function Checkout() {
 
                   {note && (
                     <div>
-                      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2.5 m-0">Order Note</h3>
+                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2.5 m-0">Order Note</h3>
                       <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                         <p className="text-amber-800 text-[13px] m-0 italic leading-relaxed">{note}</p>
                       </div>
@@ -658,7 +685,7 @@ export default function Checkout() {
                             active ? "border-brand-600 bg-brand-50/60 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"
                           }`}>
                           <input type="radio" name="payment" value={opt.value} checked={active} onChange={() => setPaymentMethod(opt.value)} className="hidden" />
-                          <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${active ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-400"}`}>
+                          <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${active ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-500"}`}>
                             <opt.icon className="w-5 h-5" />
                           </span>
                           <span className="flex-1 min-w-0">
@@ -668,7 +695,7 @@ export default function Checkout() {
                                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{opt.tag}</span>
                               )}
                             </span>
-                            <span className="block text-slate-400 text-[12.5px] font-semibold mt-1">{opt.desc}</span>
+                            <span className="block text-slate-500 text-[12.5px] font-semibold mt-1">{opt.desc}</span>
                           </span>
                           <span className={`w-5 h-5 rounded-full border-2 shrink-0 transition-colors flex items-center justify-center ${active ? "border-brand-600 bg-brand-600" : "border-slate-300"}`}>
                             {active && <Check className="w-3 h-3 text-white" />}
@@ -681,18 +708,18 @@ export default function Checkout() {
                   {paymentMethod === "razorpay" && (
                     <div className="border border-slate-200 rounded-xl p-4 mb-5 animate-fade-in-up">
                       <p className="text-slate-900 font-bold text-[13px] mb-3 m-0">
-                        Quick Pay with UPI <span className="font-medium text-slate-400 text-[11.5px]">(optional)</span>
+                        Quick Pay with UPI <span className="font-medium text-slate-500 text-[11.5px]">(optional)</span>
                       </p>
                       <div className="flex gap-2 mb-3">
                         <input className={inputCls} placeholder="yourname@upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
                         {upiId.trim() && (
                           <button type="button" onClick={() => setUpiId("")}
-                            className="bg-slate-100 border-none text-slate-500 hover:text-slate-700 font-bold text-[12.5px] cursor-pointer px-4 rounded-xl transition-colors shrink-0">
+                            className="bg-slate-100 border-none text-slate-600 hover:text-slate-700 font-bold text-[12.5px] cursor-pointer px-4 rounded-xl transition-colors shrink-0">
                             Clear
                           </button>
                         )}
                       </div>
-                      <p className="text-slate-400 text-[11.5px] flex items-center gap-1.5 font-semibold m-0">
+                      <p className="text-slate-500 text-[11.5px] flex items-center gap-1.5 font-semibold m-0">
                         <ShieldCheck className="w-4 h-4 text-emerald-600" /> Encrypted and processed by Razorpay
                       </p>
                     </div>
@@ -706,11 +733,11 @@ export default function Checkout() {
                   )}
 
                   <div className="py-4 px-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <div className="flex justify-between text-[13px] text-slate-500 font-semibold mb-1">
+                    <div className="flex justify-between text-[13px] text-slate-600 font-semibold mb-1">
                       <span>Product cost</span><span>₹{subtotal.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-[13px] text-slate-500 font-semibold mb-3">
-                      <span>Delivery charges</span><span>{delivery > 0 ? `₹${delivery.toLocaleString()}` : "Free"}</span>
+                    <div className="flex justify-between text-[13px] text-slate-600 font-semibold mb-3">
+                      <span>Delivery charges</span><span>{!pinEntered ? "Depends on PIN code" : delivery > 0 ?`₹${delivery.toLocaleString()}` : "Free"}</span>
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-slate-200">
                     <span className="font-black text-slate-900 text-[15px]">Total Payable</span>
@@ -741,16 +768,16 @@ export default function Checkout() {
           </div>
 
           {/* ── Order summary ── */}
-          <aside className="w-full lg:w-[340px] shrink-0 lg:sticky lg:top-24">
+          <aside className="w-full lg:w-[340px] shrink-0">
             <div className={cardCls}>
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="font-black text-slate-900 text-[14px] m-0 tracking-tight">Order Summary</h3>
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                   {items.length} {items.length === 1 ? "item" : "items"}
                 </span>
               </div>
 
-              <div className="px-5 py-4 flex flex-col gap-3.5 max-h-[280px] overflow-y-auto">
+              <div className="px-5 py-4 flex flex-col gap-3.5">
                 {items.map((item) => (
                   <div key={makeCartKey(item._id, item.size)} className="flex items-center gap-3">
                     <div className="relative shrink-0">
@@ -762,7 +789,7 @@ export default function Checkout() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-slate-800 text-[12.5px] font-bold truncate m-0 leading-tight">{item.name}</p>
-                      {item.size && <p className="text-slate-400 text-[11px] font-semibold mt-0.5 m-0">Size {item.size}</p>}
+                      {item.size && <p className="text-slate-500 text-[11px] font-semibold mt-0.5 m-0">Size {item.size}</p>}
                     </div>
                     <span className="text-slate-900 font-bold text-[12.5px] shrink-0">₹{(item.price * item.quantity).toLocaleString()}</span>
                   </div>
@@ -771,18 +798,20 @@ export default function Checkout() {
 
               <div className="px-5 py-4 border-t border-slate-100 flex flex-col gap-2.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-[12.5px] font-semibold">Product cost</span>
+                  <span className="text-slate-600 text-[12.5px] font-semibold">Product cost</span>
                   <span className="text-slate-900 font-bold text-[12.5px]">₹{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-[12.5px] font-semibold">Delivery charges</span>
-                  {delivery > 0
+                  <span className="text-slate-600 text-[12.5px] font-semibold">Delivery charges</span>
+                  {!pinEntered
+                    ? <span className="text-slate-600 font-semibold text-[11.5px]">Depends on PIN code</span>
+                    : delivery > 0
                     ? <span className="text-slate-900 font-bold text-[12.5px]">₹{delivery.toLocaleString()}</span>
                     : <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">Free</span>}
                 </div>
                 {step >= 4 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-[12.5px] font-semibold">Payment</span>
+                    <span className="text-slate-600 text-[12.5px] font-semibold">Payment</span>
                     <span className={`font-bold text-[11px] px-2 py-0.5 rounded border uppercase tracking-wider ${
                       paymentMethod === "razorpay" ? "bg-brand-50 text-brand-700 border-brand-100" : "bg-slate-100 text-slate-600 border-slate-200"
                     }`}>
@@ -793,15 +822,15 @@ export default function Checkout() {
               </div>
 
               <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-between items-baseline">
-                <span className="font-black text-slate-900 text-[14px]">Total</span>
+                <span className="font-black text-slate-900 text-[14px]">{pinEntered ? "Total" : "Total (excl. delivery)"}</span>
                 <span className="text-brand-700 font-black text-[22px] tracking-tight">₹{total.toLocaleString()}</span>
               </div>
 
               {step >= 2 && shipping.city && (
                 <div className="px-5 py-4 border-t border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 m-0">Delivering to</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 m-0">Delivering to</p>
                   <p className="text-slate-900 text-[13px] font-bold m-0">{shipping.fullName}</p>
-                  <p className="text-slate-400 text-[11.5px] font-semibold leading-relaxed m-0 mt-0.5">
+                  <p className="text-slate-500 text-[11.5px] font-semibold leading-relaxed m-0 mt-0.5">
                     {shipping.city}, {shipping.state} {shipping.pincode}
                   </p>
                 </div>
@@ -810,8 +839,8 @@ export default function Checkout() {
 
             {/* Trust strip */}
             <ul className="mt-3 flex flex-col gap-2 m-0 p-0 list-none">
-              {TRUST.filter(({ text }) => delivery === 0 || !text.startsWith("Free delivery")).map(({ Icon, text }) => (
-                <li key={text} className="flex items-center gap-2.5 text-[11.5px] font-semibold text-slate-500 px-2">
+              {TRUST.filter(({ text }) => (pinEntered && delivery === 0) || !text.startsWith("Free delivery")).map(({ Icon, text }) => (
+                <li key={text} className="flex items-center gap-2.5 text-[11.5px] font-semibold text-slate-600 px-2">
                   <Icon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   {text}
                 </li>

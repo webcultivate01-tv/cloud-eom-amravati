@@ -58,7 +58,7 @@ export function rootBlock(route) {
   const faqs = route.faqs?.length
     ? `<section><h2>Frequently asked questions</h2>${route.faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</section>`
     : "";
-  return `<div style="max-width:880px;margin:0 auto;padding:32px 20px;font-family:Inter,system-ui,sans-serif;color:#0f172a;line-height:1.6">
+  return `<div class="seo-fallback" style="max-width:880px;margin:0 auto;padding:32px 20px;font-family:Inter,system-ui,sans-serif;color:#0f172a;line-height:1.6">
       <header><a href="/" style="font-weight:800;color:#05618e;text-decoration:none">${esc(SITE_FULL)}</a></header>
       <main>
         <h1>${esc(route.h1 || route.title)}</h1>

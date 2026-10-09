@@ -208,9 +208,7 @@ export default function ProductDetail() {
                 </>
               )}
               <span className="basis-full text-[13px] font-semibold text-slate-500 m-0">
-                {product.deliveryCharge > 0
-                  ? <>+ ₹{product.deliveryCharge.toLocaleString()} delivery charge per item</>
-                  : <span className="text-emerald-800">Free delivery</span>}
+                + Delivery charges depend on your PIN code
               </span>
             </div>
 

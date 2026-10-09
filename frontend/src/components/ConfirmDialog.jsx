@@ -87,7 +87,7 @@ export default function ConfirmHost() {
               background: danger ? "#dc2626" : "#0f3460", color: "#fff", fontWeight: 600,
             }}
           >
-            {dlg.confirmText || (danger ? "Delete" : "Confirm")}
+            {dlg.confirmText || (/^(permanently )?(delete|remove)/i.test(dlg.message || "") ? "Delete" : "Confirm")}
           </button>
         </div>
       </div>
