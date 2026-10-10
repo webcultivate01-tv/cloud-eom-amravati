@@ -1,12 +1,14 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
 
-// Create a Razorpay order on the backend (returns razorpay_order_id)
+// Create a Razorpay order on the backend (returns razorpay_order_id).
+// Pass { amount, items, shippingAddress, couponCode } — the server prices the
+// order itself (delivery rate, coupon) and the amount it returns is what is charged.
 export const createRazorpayOrder = createAsyncThunk(
   "payment/createOrder",
-  async (amount, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/payment/create-order", { amount });
+      const { data } = await api.post("/payment/create-order", payload);
       return data; // { razorpayOrderId, amount, currency, keyId }
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to create payment order");

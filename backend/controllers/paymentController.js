@@ -1,11 +1,15 @@
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Order = require("../models/Order");
-const Product = require("../models/Product");
 const User = require("../models/User");
+const Coupon = require("../models/Coupon");
 const { sendOrderConfirmation } = require("../config/mailer");
 const { nextOrderNumber } = require("../models/Counter");
-const { computeOrderTotals, findDeliveryZone } = require("../config/orderTotals");
+const { computeOrderTotals, findDeliveryZone, buildOrderItems, OrderInputError } = require("../config/orderTotals");
+const {
+  CouponError, normalizeCode, applyCoupon, reserveCoupon, returnCouponUse, releaseCouponForOrder, couponSnapshot,
+} = require("../config/coupon");
+const { round2 } = require("../config/company");
 const { ensureInvoiceNumber, isBillable } = require("./invoiceController");
 const { renderInvoiceBuffer, invoiceFileName } = require("../config/invoice");
 
@@ -18,19 +22,45 @@ const getRazorpay = () =>
 
 // @route  POST /api/payment/create-order
 // @desc   Create a Razorpay order (returns order_id to frontend)
+//         Send { items, shippingAddress, couponCode? } and the amount is worked
+//         out here from DB prices, the pincode's delivery rate and the coupon —
+//         so the customer is charged exactly what the order will be recorded
+//         at. A bare { amount } still works as before.
 // @access Private
 const createRazorpayOrder = async (req, res) => {
   try {
-    const { amount } = req.body; // amount in rupees from frontend
+    const { amount, items, shippingAddress, couponCode } = req.body; // amount in rupees
 
-    if (!amount || amount <= 0) {
+    let payable = amount;
+    let notes;
+    if (Array.isArray(items) && items.length > 0) {
+      const orderItems = await buildOrderItems(items);
+
+      let discount = 0;
+      if (couponCode) {
+        const applied = await applyCoupon({ code: couponCode, userId: req.user._id, orderItems });
+        discount = applied.discount;
+        // Remembered on the Razorpay order so /verify honours exactly this discount
+        notes = { couponCode: applied.coupon.code, discount: String(discount) };
+      }
+      payable = computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode), discount).totalPrice;
+
+      if (payable < 1) {
+        return res.status(400).json({
+          message: "This order total is too low to pay online. Choose Cash on Delivery, or remove the coupon.",
+        });
+      }
+    }
+
+    if (!payable || payable <= 0) {
       return res.status(400).json({ message: "Invalid amount" });
     }
 
     const options = {
-      amount: Math.round(amount * 100), // Razorpay expects paise
+      amount: Math.round(payable * 100), // Razorpay expects paise
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
+      ...(notes ? { notes } : {}),
     };
 
     const order = await getRazorpay().orders.create(options);
@@ -41,6 +71,8 @@ const createRazorpayOrder = async (req, res) => {
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
+    if (err instanceof OrderInputError) return res.status(err.status).json({ message: err.message });
+    if (err instanceof CouponError) return res.status(400).json({ message: err.message });
     res.status(500).json({ message: err.message || "Razorpay order creation failed" });
   }
 };
@@ -70,48 +102,74 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
     }
 
     // 2. Build order items with fresh prices from DB
-    const orderItems = [];
+    const orderItems = await buildOrderItems(items);
 
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      if (!product) return res.status(404).json({ message: `Product ${item.product} not found` });
-      if (!product.isAvailable) return res.status(400).json({ message: `${product.name} is unavailable` });
-
-      // Validate size if product has sizes configured
-      if (product.sizes?.length > 0) {
-        if (!item.size) return res.status(400).json({ message: `Please select a size for "${product.name}"` });
-        if (!product.sizes.includes(item.size)) {
-          return res.status(400).json({ message: `Invalid size "${item.size}" for "${product.name}"` });
-        }
-      }
-
-      orderItems.push({
-        product: product._id,
-        name: product.name,
-        price: product.price,
-        deliveryCharge: product.deliveryCharge || 0,
-        quantity: item.quantity,
-        size: item.size || "",
-        uploadedImage: item.uploadedImage || "",
-      });
+    /* 3. Coupon. The customer has already paid, so the discount must be the one
+       that was charged — read back from the Razorpay order the server created
+       (its notes), not from this request. Only if Razorpay can't be reached is
+       it re-derived from the coupon code sent along, with the rules that can
+       change mid-payment (dates, limits) relaxed. */
+    let coupon = null;
+    let discount = 0;
+    let charged = null; // what Razorpay actually collected, in rupees
+    let couponCode = "";
+    let notedDiscount = null;
+    try {
+      const rzOrder = await getRazorpay().orders.fetch(razorpay_order_id);
+      charged = round2(rzOrder.amount / 100);
+      couponCode = rzOrder.notes?.couponCode || "";
+      notedDiscount = Number(rzOrder.notes?.discount) || 0;
+    } catch (fetchErr) {
+      console.error("Could not read Razorpay order", razorpay_order_id, fetchErr.message);
+      couponCode = req.body.couponCode || "";
     }
 
-    // 3. Create order in DB as paid
-    const order = await Order.create({
-      user: req.user._id,
-      orderNumber: await nextOrderNumber(),
-      items: orderItems,
-      shippingAddress,
-      ...computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode)),
-      customerNote: customerNote || "",
-      paymentMethod: "razorpay",
-      paymentStatus: "paid",
-      razorpayOrderId: razorpay_order_id,
-      razorpayPaymentId: razorpay_payment_id,
-      razorpaySignature: razorpay_signature,
-      paidAt: new Date(),
-      status: "Processing", // auto-advance from Pending since payment confirmed
-    });
+    if (couponCode) {
+      if (notedDiscount !== null) {
+        coupon = await Coupon.findOne({ code: normalizeCode(couponCode) });
+        discount = coupon ? notedDiscount : 0;
+      } else {
+        try {
+          const applied = await applyCoupon({ code: couponCode, userId: req.user._id, orderItems, lenient: true });
+          coupon = applied.coupon;
+          discount = applied.discount;
+        } catch (couponErr) {
+          console.error("Coupon not applied to a paid order", razorpay_order_id, couponErr.message);
+        }
+      }
+    }
+
+    const totals = computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode), discount);
+    if (charged !== null && Math.abs(charged - totals.totalPrice) > 0.01) {
+      console.error(`Paid amount ${charged} differs from order total ${totals.totalPrice} for`, razorpay_order_id);
+    }
+
+    // The customer has paid, so the use is counted even if the limit was hit meanwhile
+    if (coupon) await reserveCoupon(coupon, { force: true });
+
+    // 4. Create order in DB as paid
+    let order;
+    try {
+      order = await Order.create({
+        user: req.user._id,
+        orderNumber: await nextOrderNumber(),
+        items: orderItems,
+        shippingAddress,
+        ...totals,
+        ...(coupon ? { coupon: couponSnapshot(coupon) } : {}),
+        customerNote: customerNote || "",
+        paymentMethod: "razorpay",
+        paymentStatus: "paid",
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature,
+        paidAt: new Date(),
+        status: "Processing", // auto-advance from Pending since payment confirmed
+      });
+    } catch (createErr) {
+      if (coupon) await returnCouponUse(coupon._id);
+      throw createErr;
+    }
 
     /* Paid online means the sale is already settled, so the tax invoice
        goes out with the confirmation email right away — unlike a COD order,
@@ -146,6 +204,7 @@ const verifyPaymentAndCreateOrder = async (req, res) => {
 
     res.status(201).json(order);
   } catch (err) {
+    if (err instanceof OrderInputError) return res.status(err.status).json({ message: err.message });
     res.status(500).json({ message: err.message || "Payment verification failed" });
   }
 };
@@ -233,6 +292,7 @@ const markRefunded = async (req, res) => {
     order.paymentStatus = "refunded";
     order.status = "Cancelled";
     const updated = await order.save();
+    await releaseCouponForOrder(updated);
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });

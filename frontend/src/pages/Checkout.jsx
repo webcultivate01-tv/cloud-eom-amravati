@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { placeOrder, resetOrderState } from "../features/orders/orderSlice";
 import { createRazorpayOrder, verifyAndPlaceOrder, resetPayment } from "../features/payment/paymentSlice";
@@ -13,7 +13,7 @@ import DropdownSelect from "../components/DropdownSelect";
 import {
   Package, MapPin, Palette, CheckCircle2, CreditCard, Banknote, ShieldCheck, Home, Briefcase,
   Image as ImageIcon, Upload, AlertTriangle, Ban, Info, ChevronRight, ChevronLeft, Check,
-  Lock, Truck, RotateCcw, Pencil, Download,
+  Lock, Truck, RotateCcw, Pencil, Download, Ticket,
 } from "lucide-react";
 
 const INDIAN_STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"];
@@ -90,7 +90,17 @@ export default function Checkout() {
     ? (zone.chargeType === "per_unit" ? zone.charge * units : zone.charge)
     : productDelivery;
   const pinEntered = /^\d{6}$/.test(shipping.pincode); // until then the delivery charge is unknown
-  const total = subtotal + delivery; // everything the customer pays: product cost + delivery
+
+  /* Coupon. The server judges it (rules, limits, who is buying) and this only
+     holds the result for display. It is checked again when the order is placed,
+     and here whenever the cart changes underneath an applied coupon. */
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState(null); // { code, description, discount }
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const couponDiscount = coupon?.discount || 0;
+  // everything the customer pays: product cost − coupon + delivery (the coupon never touches delivery)
+  const total = Math.round((subtotal - couponDiscount + delivery) * 100) / 100;
 
   useEffect(() => {
     if (orderSuccess || paySuccess) {
@@ -100,6 +110,8 @@ export default function Checkout() {
         orderId: order?._id || "",
         paymentMethod: order?.paymentMethod || paymentMethod,
         totalPrice: order?.totalPrice,
+        discount: order?.discount || 0,
+        couponCode: order?.coupon?.code || "",
       });
     }
   }, [orderSuccess, paySuccess]);
@@ -156,6 +168,45 @@ export default function Checkout() {
     uploadedImage: item.uploadedImage || "",
   }));
 
+  /* The cart and the applied coupon can drift apart (items changed in another
+     tab, say). Re-check the coupon when the cart changes and drop it if it no
+     longer holds. Held in a ref so applying a coupon doesn't trigger a second check. */
+  const cartSignature = items.map((i) => `${i._id}:${i.size || ""}:${i.quantity}`).join("|");
+  const appliedCouponRef = useRef(null);
+  useEffect(() => { appliedCouponRef.current = coupon?.code || null; }, [coupon]);
+  useEffect(() => {
+    const code = appliedCouponRef.current;
+    if (!code || items.length === 0) return;
+    let cancelled = false;
+    api.post("/coupons/validate", { code, items: buildOrderItems() })
+      .then(({ data }) => { if (!cancelled) setCoupon({ code: data.code, description: data.description, discount: data.discount }); })
+      .catch((err) => {
+        if (cancelled) return;
+        setCoupon(null);
+        toast.error(`Coupon ${code} was removed: ${err.response?.data?.message || "it no longer applies to your cart"}`);
+      });
+    return () => { cancelled = true; };
+  }, [cartSignature]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) { setCouponError("Enter a coupon code"); return; }
+    setCouponBusy(true);
+    setCouponError("");
+    try {
+      const { data } = await api.post("/coupons/validate", { code, items: buildOrderItems() });
+      setCoupon({ code: data.code, description: data.description, discount: data.discount });
+      setCouponInput("");
+      toast.success(`Coupon ${data.code} applied — you save ₹${data.discount.toLocaleString("en-IN")}`);
+    } catch (err) {
+      setCouponError(err.response?.data?.message || "Could not apply this coupon. Please try again.");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => { setCoupon(null); setCouponError(""); };
+
   const validateShipping = () => {
     if (!shipping.fullName.trim()) { toast.error("Enter your full name"); return false; }
     if (!shipping.phone.trim() || !/^\d{10}$/.test(shipping.phone.trim())) { toast.error("Enter a valid 10-digit phone number"); return false; }
@@ -168,13 +219,16 @@ export default function Checkout() {
 
   const handleCOD = () => {
     if (missingImages.length > 0) { toast.error(`Upload image for: ${missingImages.map((i) => i.name).join(", ")}`); return; }
-    dispatch(placeOrder({ items: buildOrderItems(), shippingAddress: shipping, customerNote: note, paymentMethod: "cod" }));
+    dispatch(placeOrder({ items: buildOrderItems(), shippingAddress: shipping, customerNote: note, paymentMethod: "cod", couponCode: coupon?.code }));
   };
 
   const handleRazorpay = async () => {
     if (missingImages.length > 0) { toast.error(`Upload image for: ${missingImages.map((i) => i.name).join(", ")}`); return; }
     try { await loadRazorpay(); } catch { toast.error("Could not load the payment gateway. Check your connection and try again."); return; }
-    const result = await dispatch(createRazorpayOrder(total));
+    /* The server works out the amount itself (prices, delivery rate, coupon) and
+       the checkout opens for exactly that — `amount` below is what it returns. */
+    const couponCode = coupon?.code;
+    const result = await dispatch(createRazorpayOrder({ amount: total, items: buildOrderItems(), shippingAddress: shipping, couponCode }));
     if (result.error) return;
     const { razorpayOrderId, amount, currency, keyId } = result.payload;
     const options = {
@@ -183,7 +237,7 @@ export default function Checkout() {
       prefill: { name: user?.name || shipping.fullName, email: user?.email || "", contact: shipping.phone, vpa: upiId.trim() || undefined },
       theme: { color: "#05618e" },
       handler: async (response) => {
-        await dispatch(verifyAndPlaceOrder({ ...response, items: buildOrderItems(), shippingAddress: shipping, customerNote: note }));
+        await dispatch(verifyAndPlaceOrder({ ...response, items: buildOrderItems(), shippingAddress: shipping, customerNote: note, couponCode }));
       },
       modal: { ondismiss: () => toast.info("Payment cancelled. You can try again.") },
     };
@@ -228,6 +282,12 @@ export default function Checkout() {
               <div className="flex justify-between text-[13px]">
                 <span className="text-slate-600 font-semibold">Order ID</span>
                 <span className="text-slate-900 font-black tracking-wider">#{shortId}</span>
+              </div>
+            )}
+            {placedOrder.discount > 0 && (
+              <div className="flex justify-between text-[13px]">
+                <span className="text-slate-600 font-semibold">Coupon{placedOrder.couponCode ? ` (${placedOrder.couponCode})` : ""} saved</span>
+                <span className="text-emerald-700 font-black">₹{placedOrder.discount.toLocaleString("en-IN")}</span>
               </div>
             )}
             {placedOrder.totalPrice != null && (
@@ -732,10 +792,50 @@ export default function Checkout() {
                     </div>
                   )}
 
+                  {/* Coupon */}
+                  <div className="mb-5">
+                    {coupon ? (
+                      <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                        <Ticket className="w-[18px] h-[18px] text-emerald-600 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-emerald-800 font-black text-[13px] tracking-wider m-0">{coupon.code} applied</p>
+                          <p className="text-emerald-700 text-[12px] font-medium m-0 mt-0.5">
+                            You save ₹{couponDiscount.toLocaleString("en-IN")}{coupon.description ? ` · ${coupon.description}` : ""}
+                          </p>
+                        </div>
+                        <button type="button" onClick={handleRemoveCoupon}
+                          className="bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 font-bold text-[12px] cursor-pointer px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-slate-900 font-bold text-[13px] mb-2 m-0 flex items-center gap-1.5">
+                          <Ticket className="w-4 h-4 text-brand-600" /> Have a coupon code?
+                        </p>
+                        <div className="flex gap-2">
+                          <input className={`${inputCls} uppercase tracking-wider`} placeholder="Enter coupon code" value={couponInput} maxLength={20}
+                            onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (!couponBusy) handleApplyCoupon(); } }} />
+                          <button type="button" onClick={handleApplyCoupon} disabled={couponBusy || !couponInput.trim()}
+                            className="bg-slate-900 hover:bg-slate-700 text-white border-none font-bold text-[13px] cursor-pointer px-5 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {couponBusy ? "Checking…" : "Apply"}
+                          </button>
+                        </div>
+                        {couponError && <p className="text-red-600 text-[12px] font-semibold m-0 mt-2" role="alert">{couponError}</p>}
+                      </>
+                    )}
+                  </div>
+
                   <div className="py-4 px-4 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex justify-between text-[13px] text-slate-600 font-semibold mb-1">
                       <span>Product cost</span><span>₹{subtotal.toLocaleString()}</span>
                     </div>
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-[13px] text-emerald-700 font-semibold mb-1">
+                        <span>Coupon ({coupon.code})</span><span>− ₹{couponDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-[13px] text-slate-600 font-semibold mb-3">
                       <span>Delivery charges</span><span>{!pinEntered ? "Depends on PIN code" : delivery > 0 ?`₹${delivery.toLocaleString()}` : "Free"}</span>
                     </div>
@@ -801,6 +901,12 @@ export default function Checkout() {
                   <span className="text-slate-600 text-[12.5px] font-semibold">Product cost</span>
                   <span className="text-slate-900 font-bold text-[12.5px]">₹{subtotal.toLocaleString()}</span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-emerald-700 text-[12.5px] font-semibold">Coupon ({coupon.code})</span>
+                    <span className="text-emerald-700 font-bold text-[12.5px]">− ₹{couponDiscount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 text-[12.5px] font-semibold">Delivery charges</span>
                   {!pinEntered

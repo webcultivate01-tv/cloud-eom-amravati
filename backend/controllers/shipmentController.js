@@ -263,6 +263,8 @@ const shipOrder = async (req, res) => {
         orderNumber:     order.orderNumber,
         items:           order.items,
         totalPrice:      order.totalPrice,
+        discount:        order.discount,
+        couponCode:      order.coupon?.code,
         trackingId,
         courierName,
         shippingAddress: order.shippingAddress,

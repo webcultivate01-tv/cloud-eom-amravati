@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import {
   LayoutDashboard, Package, ShoppingCart, Users, ShieldCheck, UserCog,
-  CalendarDays, Tag, Image, Mail, Star, RefreshCw, Download, CreditCard, BarChart3, Truck,
+  CalendarDays, Tag, Image, Mail, Star, RefreshCw, Download, CreditCard, BarChart3, Truck, Ticket,
 } from "lucide-react";
 
 /**
@@ -34,6 +34,7 @@ export const PANEL_SECTIONS = [
       { key: "products",   path: "products",   icon: Package,      label: "Products" },
       { key: "categories", path: "categories", icon: Tag,          label: "Categories" },
       { key: "delivery",   path: "delivery",   icon: Truck,        label: "Delivery Charges" },
+      { key: "coupons",    path: "coupons",    icon: Ticket,       label: "Coupons" },
       { key: "hero",       path: "hero",      icon: Image,        label: "Hero Section" },
       { key: "events",     path: "events",     icon: CalendarDays, label: "Events" },
     ],

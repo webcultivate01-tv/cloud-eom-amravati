@@ -99,12 +99,12 @@ const otpBlock = (otp) => `
     </td></tr>
   </table>`;
 
-/** Delivery charges inside a total = total minus the items' own cost (0 on older orders). */
-const deliveryOf = (items, totalPrice) =>
-  Math.max(Math.round((totalPrice - (items || []).reduce((s, i) => s + i.price * i.quantity, 0)) * 100) / 100, 0);
+/** Delivery charges inside a total = total minus the items' own cost after any coupon discount (0 on older orders). */
+const deliveryOf = (items, totalPrice, discount = 0) =>
+  Math.max(Math.round((totalPrice - ((items || []).reduce((s, i) => s + i.price * i.quantity, 0) - discount)) * 100) / 100, 0);
 
-/** Line-item table shared by the order, dispatch and delivery mails. */
-const itemsTable = (items, totalPrice) => `
+/** Line-item table shared by the order, dispatch and delivery mails. A coupon `discount` adds its own line. */
+const itemsTable = (items, totalPrice, { discount = 0, couponCode = "" } = {}) => `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
     <tr>
       <th align="left"   style="padding:0 0 8px;font:700 11px/1 Arial,Helvetica,sans-serif;color:${T.faint};letter-spacing:0.8px;text-transform:uppercase;border-bottom:2px solid ${T.line};">Item</th>
@@ -119,14 +119,19 @@ const itemsTable = (items, totalPrice) => `
         <td align="center" style="padding:11px 0;font:400 14px/1.45 Arial,Helvetica,sans-serif;color:${T.muted};border-bottom:1px solid ${T.line};">${it.quantity}</td>
         <td align="right"  style="padding:11px 0;font:700 14px/1.45 Arial,Helvetica,sans-serif;color:${T.ink};border-bottom:1px solid ${T.line};">${money(it.price * it.quantity)}</td>
       </tr>`).join("")}
-    ${totalPrice !== undefined && deliveryOf(items, totalPrice) > 0 ? `
+    ${totalPrice !== undefined && (discount > 0 || deliveryOf(items, totalPrice, discount) > 0) ? `
       <tr>
         <td colspan="2" style="padding:12px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.muted};">Product cost</td>
-        <td align="right" style="padding:12px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">${money(totalPrice - deliveryOf(items, totalPrice))}</td>
+        <td align="right" style="padding:12px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">${money((items || []).reduce((s, i) => s + i.price * i.quantity, 0))}</td>
       </tr>
+      ${discount > 0 ? `
+      <tr>
+        <td colspan="2" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.muted};">Coupon discount${couponCode ? ` (${esc(couponCode)})` : ""}</td>
+        <td align="right" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:#047857;">&minus; ${money(discount)}</td>
+      </tr>` : ""}
       <tr>
         <td colspan="2" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.muted};">Delivery charges</td>
-        <td align="right" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">${money(deliveryOf(items, totalPrice))}</td>
+        <td align="right" style="padding:6px 0 0;font:400 14px/1.4 Arial,Helvetica,sans-serif;color:${T.ink};">${deliveryOf(items, totalPrice, discount) > 0 ? money(deliveryOf(items, totalPrice, discount)) : "Free"}</td>
       </tr>` : ""}
     ${totalPrice !== undefined ? `
       <tr>
@@ -290,7 +295,7 @@ const sendOrderConfirmation = async ({ toEmail, toName, order, attachments = [] 
       })}
 
       ${heading("Items")}
-      ${itemsTable(order.items, order.totalPrice)}
+      ${itemsTable(order.items, order.totalPrice, { discount: order.discount, couponCode: order.coupon?.code })}
 
       ${heading("Payment")}
       ${detailRows([
@@ -350,7 +355,7 @@ const progressTrack = (status) => {
  * `attachments` carries the tax invoice on delivery.
  */
 const sendOrderStatusUpdate = async ({
-  toEmail, toName, orderId, orderNumber, status, totalPrice, items, attachments = [],
+  toEmail, toName, orderId, orderNumber, status, totalPrice, discount = 0, couponCode = "", items, attachments = [],
 }) => {
   const ref = orderRef({ _id: orderId, orderNumber });
   const info = STATUS_INFO[status] || {
@@ -373,7 +378,7 @@ const sendOrderStatusUpdate = async ({
       ${panel({ tone: info.tone, tint: info.tint, title: status, body: esc(info.text) })}
       ${progressTrack(status)}
 
-      ${items?.length ? `${heading("Items")}${itemsTable(items, totalPrice)}` : ""}
+      ${items?.length ? `${heading("Items")}${itemsTable(items, totalPrice, { discount, couponCode })}` : ""}
 
       ${status === "Delivered" ? `
         ${heading("Your invoice")}
@@ -386,7 +391,7 @@ const sendOrderStatusUpdate = async ({
 };
 
 const sendShipmentEmail = async ({
-  toEmail, toName, orderId, orderNumber, items, totalPrice, trackingId, courierName, shippingAddress,
+  toEmail, toName, orderId, orderNumber, items, totalPrice, discount = 0, couponCode = "", trackingId, courierName, shippingAddress,
 }) => {
   const ref = orderRef({ _id: orderId, orderNumber });
   const trackingUrl = trackingId ? `https://shiprocket.co/tracking/${trackingId}` : null;
@@ -418,7 +423,7 @@ const sendShipmentEmail = async ({
       ${addressBlock(shippingAddress)}
 
       ${heading("Items in this shipment")}
-      ${itemsTable(items, totalPrice)}
+      ${itemsTable(items, totalPrice, { discount, couponCode })}
 
       <p style="margin:22px 0 0;font:400 13px/1.65 Arial,Helvetica,sans-serif;color:${T.muted};">
         Most deliveries arrive within 3&ndash;7 business days. Tracking updates begin once the courier scans the parcel at pickup.

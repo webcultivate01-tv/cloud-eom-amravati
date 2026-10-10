@@ -181,8 +181,11 @@ const itemColumns = (w) => {
 };
 
 const FOOTER_H = 236; // bank/QR + totals + signature, kept together on one page
+const DISCOUNT_ROW_H = 16; // the extra totals line a coupon adds
+const footerHeight = (model) => FOOTER_H + (model.discount > 0 ? DISCOUNT_ROW_H : 0);
 
-const drawItems = (doc, top, { items, itemsTotal }) => {
+const drawItems = (doc, top, model) => {
+  const { items, itemsTotal } = model;
   const W = doc.page.width;
   const H = doc.page.height;
   const w = W - MARGIN * 2;
@@ -207,7 +210,7 @@ const drawItems = (doc, top, { items, itemsTotal }) => {
     const h = Math.max(titleH + subH + 20, 34);
 
     // Leave room for the footer on the last page; otherwise continue on a fresh one.
-    if (y + h > H - 60 - (i === items.length - 1 ? FOOTER_H : 0)) {
+    if (y + h > H - 60 - (i === items.length - 1 ? footerHeight(model) : 0)) {
       doc.addPage();
       drawFrame(doc);
       y = drawHead(50);
@@ -242,9 +245,9 @@ const drawFooter = async (doc, top, model) => {
   const W = doc.page.width;
   const H = doc.page.height;
   const right = W - MARGIN;
-  const { totals, received, itemsTotal, deliveryCharge } = model;
+  const { totals, received, itemsTotal, deliveryCharge, discount, couponCode } = model;
 
-  if (top + FOOTER_H > H - 40) { doc.addPage(); drawFrame(doc); top = 50; }
+  if (top + footerHeight(model) > H - 40) { doc.addPage(); drawFrame(doc); top = 50; }
 
   /* Left — bank details and payment QR */
   let y = top + 18;
@@ -272,21 +275,27 @@ const drawFooter = async (doc, top, model) => {
   /* Right — totals, amount in words, signature */
   const rx = 300;
   hline(doc, rx, right, top + 14, GOLD, 1);
-  [["Product Cost", itemsTotal, top + 22], ["Delivery Charges", deliveryCharge, top + 38]].forEach(([label, amt, ly]) => {
+  // A coupon adds a "Discount" line between product cost and delivery, pushing everything below it down
+  const dy = discount > 0 ? DISCOUNT_ROW_H : 0;
+  const rows = [["Product Cost", `Rs. ${money(itemsTotal)}`]];
+  if (discount > 0) rows.push([couponCode ? `Discount (${couponCode})` : "Discount", `- Rs. ${money(discount)}`]);
+  rows.push(["Delivery Charges", deliveryCharge > 0 ? `Rs. ${money(deliveryCharge)}` : "Free"]);
+  rows.forEach(([label, value], i) => {
+    const ly = top + 22 + i * DISCOUNT_ROW_H;
     doc.font("Helvetica").fontSize(9).fillColor(MUTED).text(label, rx, ly, { lineBreak: false });
-    doc.fillColor(INK).text(amt > 0 || label === "Product Cost" ? `Rs. ${money(amt)}` : "Free", rx, ly, { width: right - rx, align: "right" });
+    doc.fillColor(INK).text(value, rx, ly, { width: right - rx, align: "right" });
   });
-  hline(doc, rx, right, top + 56, GOLD, 0.6);
-  doc.font("Helvetica-Bold").fontSize(11).fillColor(INK).text("Total Amount", rx, top + 64, { lineBreak: false });
-  doc.text(`Rs. ${money(totals.gross)}`, rx, top + 64, { width: right - rx, align: "right" });
-  hline(doc, rx, right, top + 86, GOLD, 0.6);
-  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Received Amount", rx, top + 95, { lineBreak: false });
-  doc.text(`Rs. ${money(received)}`, rx, top + 95, { width: right - rx, align: "right" });
+  hline(doc, rx, right, top + 56 + dy, GOLD, 0.6);
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(INK).text("Total Amount", rx, top + 64 + dy, { lineBreak: false });
+  doc.text(`Rs. ${money(totals.gross)}`, rx, top + 64 + dy, { width: right - rx, align: "right" });
+  hline(doc, rx, right, top + 86 + dy, GOLD, 0.6);
+  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Received Amount", rx, top + 95 + dy, { lineBreak: false });
+  doc.text(`Rs. ${money(received)}`, rx, top + 95 + dy, { width: right - rx, align: "right" });
 
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Total Amount (in words)", rx, top + 118, { lineBreak: false });
-  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(amountInWords(totals.gross), rx, top + 131, { width: right - rx });
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Total Amount (in words)", rx, top + 118 + dy, { lineBreak: false });
+  doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(amountInWords(totals.gross), rx, top + 131 + dy, { width: right - rx });
 
-  const sigTop = top + 156;
+  const sigTop = top + 156 + dy;
   doc.save().lineWidth(0.7).strokeColor(GOLD).roundedRect(rx, sigTop, right - rx, 74, 8).stroke().restore();
   if (fs.existsSync(SIGNATURE)) {
     doc.image(SIGNATURE, rx + 40, sigTop + 6, { fit: [right - rx - 80, 36], align: "center", valign: "bottom" });
@@ -315,10 +324,12 @@ const buildInvoiceModel = (order) => {
 
   const totals = splitGst(order.totalPrice);
   // Product cost is recomputed from the lines; delivery is whatever remains of
-  // the total, so the two always add up to it — including on orders placed
-  // before delivery charges were stored (those come out as 0 / Free).
+  // the total once the coupon discount is taken off, so they always add up to
+  // it — including on orders placed before delivery charges were stored (those
+  // come out as 0 / Free).
   const itemsTotal = round2(items.reduce((s, it) => s + it.amount, 0));
-  const deliveryCharge = Math.max(round2(order.totalPrice - itemsTotal), 0);
+  const discount = Math.min(round2(order.discount || 0), itemsTotal);
+  const deliveryCharge = Math.max(round2(order.totalPrice - (itemsTotal - discount)), 0);
 
   const addr = order.shippingAddress || {};
   const addressText = [
@@ -353,6 +364,8 @@ const buildInvoiceModel = (order) => {
     },
     items,
     itemsTotal,
+    discount,
+    couponCode: order.coupon?.code || "",
     deliveryCharge,
     totals,
     received: paid ? totals.gross : 0,

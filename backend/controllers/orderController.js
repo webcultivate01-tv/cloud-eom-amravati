@@ -9,6 +9,7 @@ const { renderInvoiceBuffer, invoiceFileName } = require("../config/invoice");
 const { nextOrderNumber } = require("../models/Counter");
 const { computeOrderTotals, findDeliveryZone } = require("../config/orderTotals");
 const { hasModule } = require("../middleware/adminMiddleware");
+const { CouponError, applyCoupon, reserveCoupon, returnCouponUse, releaseCouponForOrder, reclaimCouponForOrder, couponSnapshot } = require("../config/coupon");
 
 const getRazorpay = () =>
   new Razorpay({
@@ -21,7 +22,7 @@ const getRazorpay = () =>
 // @access  Private (logged-in users)
 const createOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, customerNote, paymentMethod } = req.body;
+    const { items, shippingAddress, customerNote, paymentMethod, couponCode } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "No items in order" });
@@ -82,16 +83,32 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const order = await Order.create({
-      user: req.user._id,
-      orderNumber: await nextOrderNumber(),
-      items: orderItems,
-      shippingAddress,
-      ...computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode)),
-      customerNote,
-      paymentMethod: "cod",
-      paymentStatus: "pending",
-    });
+    /* Coupon: judged here against the real prices, never trusted from the
+       browser. The use is counted before the order is saved (so the usage
+       limit holds under simultaneous orders) and handed back if saving fails. */
+    let applied = null;
+    if (couponCode) {
+      applied = await applyCoupon({ code: couponCode, userId: req.user._id, orderItems });
+      await reserveCoupon(applied.coupon);
+    }
+
+    let order;
+    try {
+      order = await Order.create({
+        user: req.user._id,
+        orderNumber: await nextOrderNumber(),
+        items: orderItems,
+        shippingAddress,
+        ...computeOrderTotals(orderItems, await findDeliveryZone(shippingAddress?.pincode), applied?.discount || 0),
+        ...(applied ? { coupon: couponSnapshot(applied.coupon) } : {}),
+        customerNote,
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+      });
+    } catch (err) {
+      if (applied) await returnCouponUse(applied.coupon._id);
+      throw err;
+    }
 
     // Send order confirmation email (non-blocking)
     try {
@@ -107,6 +124,7 @@ const createOrder = async (req, res) => {
 
     res.status(201).json(order);
   } catch (error) {
+    if (error instanceof CouponError) return res.status(400).json({ message: error.message });
     res.status(500).json({ message: error.message });
   }
 };
@@ -348,6 +366,10 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // A cancelled order gives its coupon use back (and takes it again if re-opened)
+    if (status === "Cancelled") await releaseCouponForOrder(order);
+    else if (existing.status === "Cancelled") await reclaimCouponForOrder(order);
+
     // The artwork has been printed and handed over, so the full-resolution file
     // is no longer needed — compress it for long-term storage. Deliberately
     // awaited but never allowed to throw: the order is already saved, and the
@@ -385,6 +407,8 @@ const updateOrderStatus = async (req, res) => {
           orderNumber: order.orderNumber,
           status,
           totalPrice: order.totalPrice,
+          discount: order.discount,
+          couponCode: order.coupon?.code,
           items: order.items,
           attachments: invoiceAttachment,
         });
@@ -526,6 +550,7 @@ const cancelOrder = async (req, res) => {
     order.cancelOTP = null;
     order.cancelOTPExpiry = null;
     const updated = await order.save();
+    await releaseCouponForOrder(updated);
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -35,6 +35,7 @@ app.use("/api/hero",     require("./routes/heroRoutes"));
 app.use("/api/shipment",    require("./routes/shipmentRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/delivery",   require("./routes/deliveryRoutes"));
+app.use("/api/coupons",    require("./routes/couponRoutes"));
 app.use("/api/payment",    require("./routes/paymentRoutes"));
 app.use("/api/inquiry",   require("./routes/inquiryRoutes"));
 app.use("/api/review",       require("./routes/reviewRoutes"));
