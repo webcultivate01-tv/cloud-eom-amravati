@@ -45,11 +45,24 @@ const orderSchema = new mongoose.Schema(
     },
 
     // Product cost (sum of price × qty) and delivery charges, kept separately
-    // so the bill can itemise them. totalPrice is always itemsTotal +
-    // deliveryCharge — the amount actually charged. Orders placed before
-    // delivery charges existed have neither field; they read as 0 delivery.
+    // so the bill can itemise them. totalPrice is always itemsTotal −
+    // discount + deliveryCharge — the amount actually charged. Orders placed
+    // before delivery charges existed have neither field; they read as 0 delivery.
     itemsTotal:     { type: Number, default: 0, min: 0 },
     deliveryCharge: { type: Number, default: 0, min: 0 },
+
+    // Coupon discount, taken off the product cost: totalPrice = itemsTotal −
+    // discount + deliveryCharge. The coupon's terms are frozen here so the bill
+    // and reports stay right even if the coupon is edited or switched off later.
+    // `released` marks that a cancelled order has already handed its use back.
+    discount: { type: Number, default: 0, min: 0 },
+    coupon: {
+      code:          { type: String, default: "" },
+      couponId:      { type: mongoose.Schema.Types.ObjectId, ref: "Coupon", default: null },
+      discountType:  { type: String, enum: ["", "percentage", "fixed"], default: "" },
+      discountValue: { type: Number, default: 0 },
+      released:      { type: Boolean, default: false },
+    },
 
     totalPrice: {
       type: Number,
@@ -123,5 +136,8 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Per-customer coupon limits and the coupon usage history look orders up by code
+orderSchema.index({ "coupon.code": 1, user: 1 });
 
 module.exports = mongoose.model("Order", orderSchema);

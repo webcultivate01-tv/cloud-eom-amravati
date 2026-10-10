@@ -571,6 +571,11 @@ export default function ManageOrders() {
                           incl. ₹{order.deliveryCharge.toLocaleString()} delivery
                         </p>
                       )}
+                      {order.discount > 0 && (
+                        <p className="text-[10px] text-emerald-600 font-bold leading-none mt-0.5">
+                          −₹{order.discount.toLocaleString()} coupon{order.coupon?.code ? ` ${order.coupon.code}` : ""}
+                        </p>
+                      )}
                     </div>
 
                     {/* Payment + Status badges */}

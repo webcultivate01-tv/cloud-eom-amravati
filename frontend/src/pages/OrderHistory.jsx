@@ -266,7 +266,10 @@ export default function OrderHistory() {
                         {order.paymentMethod === "razorpay" ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
                         {order.paymentStatus === "paid" ? "Paid" : order.paymentStatus === "refunded" ? "Refunded" : "Pending"}
                       </span>
-                      <span className="font-black text-slate-900 text-[15px] ml-1 tracking-tight" title={order.deliveryCharge > 0 ? `Product ₹${(order.totalPrice - order.deliveryCharge).toLocaleString()} + delivery ₹${order.deliveryCharge.toLocaleString()}` : undefined}>₹{order.totalPrice.toLocaleString()}</span>
+                      <span className="font-black text-slate-900 text-[15px] ml-1 tracking-tight" title={order.deliveryCharge > 0 || order.discount > 0 ? `Product ₹${(order.itemsTotal || order.totalPrice - order.deliveryCharge).toLocaleString()}${order.discount > 0 ? ` − coupon ${order.coupon?.code || ""} ₹${order.discount.toLocaleString()}` : ""}${order.deliveryCharge > 0 ? ` + delivery ₹${order.deliveryCharge.toLocaleString()}` : ""}` : undefined}>₹{order.totalPrice.toLocaleString()}</span>
+                      {order.discount > 0 && (
+                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 text-[11px] font-bold px-2 py-0.5 rounded-full">Saved ₹{order.discount.toLocaleString()}</span>
+                      )}
                     </div>
                   </div>
 
